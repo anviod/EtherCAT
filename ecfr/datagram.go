@@ -244,7 +244,7 @@ func (dh *DatagramHeader) Commit() ([]byte, error) {
 	}
 	lo := uint64(dh.Command) | uint64(dh.Index)<<8 | uint64(dh.Addr32)<<16 | uint64(dh.LenWord)<<48
 	*(*uint64)(unsafe.Pointer(&dh.buffer[0])) = lo
-	*(*uint16)(unsafe.Pointer(&dh.buffer[8])) = uint16(dh.Interrupt)
+	*(*uint16)(unsafe.Pointer(&dh.buffer[8])) = dh.Interrupt
 	return dh.buffer[:datagramHeaderLength], nil
 }
 

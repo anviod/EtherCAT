@@ -38,24 +38,36 @@ func main() {
 
 	switch os.Args[1] {
 	case "info":
-		infoCmd.Parse(os.Args[2:])
+		if err := infoCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		if infoCmd.NArg() < 1 {
 			fmt.Fprintln(os.Stderr, "usage: ethercat info <esi-file>")
 			os.Exit(1)
 		}
 		handleInfo(infoCmd.Arg(0))
 	case "scan":
-		scanCmd.Parse(os.Args[2:])
+		if err := scanCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		handleScan()
 	case "read":
-		readCmd.Parse(os.Args[2:])
+		if err := readCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		if readCmd.NArg() < 2 {
 			fmt.Fprintln(os.Stderr, "usage: ethercat read <addr> <reg>")
 			os.Exit(1)
 		}
 		handleRead(readCmd.Arg(0), readCmd.Arg(1))
 	case "write":
-		writeCmd.Parse(os.Args[2:])
+		if err := writeCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		if writeCmd.NArg() < 3 {
 			fmt.Fprintln(os.Stderr, "usage: ethercat write <addr> <reg> <val>")
 			os.Exit(1)

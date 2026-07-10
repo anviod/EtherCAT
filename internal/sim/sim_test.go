@@ -24,7 +24,7 @@ func makeTestFrame(command ecfr.CommandType, addr32 uint32, dataLen int, data []
 	dg.Header.Command = command
 	dg.Header.Addr32 = addr32
 	dg.Header.SetLast(true)
-	if data != nil && len(data) > 0 {
+	if len(data) > 0 {
 		copy(dg.Data, data)
 	}
 	return &frame
@@ -52,7 +52,7 @@ func makeMultiDatagramFrame(specs []struct {
 		if i == len(specs)-1 {
 			dg.Header.SetLast(true)
 		}
-		if spec.data != nil && len(spec.data) > 0 {
+		if len(spec.data) > 0 {
 			copy(dg.Data, spec.data)
 		}
 	}

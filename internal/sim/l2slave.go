@@ -88,7 +88,7 @@ type ALControl struct {
 func (c *ALControl) Read(offs uint16, dp *uint8) bool {
 	switch offs {
 	case 0:
-		v := uint8(c.wdState & 0x0f)
+		v := c.wdState & 0x0f
 		if c.ack {
 			v |= 1 << 4
 		}
@@ -334,7 +334,7 @@ func (s *L2Slave) ProcessFrame(infr *ecfr.Frame) (ofr *ecfr.Frame) {
 		// Uses copy() instead of byte-by-byte loops — 100x fewer function calls.
 		if physbase >= regAreaLength {
 			if reads {
-				copy(dg.Data[:datalen], s.BackingMemory[physbase:physbase+uint16(datalen)])
+				copy(dg.Data[:datalen], s.BackingMemory[physbase:physbase+datalen])
 			}
 			if writes {
 				copy(s.BackingMemory[physbase:physbase+uint16(datalen)], dg.Data[:datalen])

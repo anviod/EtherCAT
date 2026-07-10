@@ -230,7 +230,7 @@ func (r *muxChanCycleReq) handle(m *Multiplexer) {
 	}
 
 	cb.cycling = true
-	r.muxChannel.cycleRespChan = r.responseChan
+	r.cycleRespChan = r.responseChan
 }
 
 type muxCycleReq struct {

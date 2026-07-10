@@ -293,38 +293,4 @@ func BenchmarkUDPFramerCycle(b *testing.B) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Helpers: find a valid network interface for optional real-network tests
-// ---------------------------------------------------------------------------
 
-// findValidInterface returns the first non-loopback, up interface with a
-// multicast-capable IPv4 address.
-func findValidInterface() (*net.Interface, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	for _, iface := range ifaces {
-		if iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		if iface.Flags&net.FlagUp == 0 {
-			continue
-		}
-		if iface.Flags&net.FlagMulticast == 0 {
-			continue
-		}
-		addrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok {
-				if ipnet.IP.To4() != nil {
-					return &iface, nil
-				}
-			}
-		}
-	}
-	return nil, errors.New("no suitable multicast interface found")
-}

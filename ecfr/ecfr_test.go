@@ -1023,7 +1023,7 @@ func TestByteLenCache(t *testing.T) {
 
 	// 添加多个不同长度的数据报，验证缓存一致性
 	dataLens := []int{16, 32, 8, 64}
-	var expectedTotal int = FrameOverheadLen
+	var expectedTotal = FrameOverheadLen
 
 	for _, dl := range dataLens {
 		dg, err := f.NewDatagram(dl)

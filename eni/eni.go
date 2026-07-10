@@ -112,12 +112,16 @@ type Eeprom struct {
 }
 
 // ReadEtherCATInfoFromFile reads and parses an ESI XML file from the given filename.
-func ReadEtherCATInfoFromFile(filename string) (EtherCATInfo, error) {
+func ReadEtherCATInfoFromFile(filename string) (info EtherCATInfo, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return EtherCATInfo{}, fmt.Errorf("eni: failed to open file %q: %w", filename, err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("eni: failed to close file %q: %w", filename, cerr)
+		}
+	}()
 	return ReadEtherCATInfo(f)
 }
 

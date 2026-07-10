@@ -58,10 +58,10 @@ const (
 
 // Sentinel errors.
 var (
-	// NoFrame indicates that a frame did not arrive within the retry limit.
-	NoFrame = errors.New("frame did not arrive")
-	// NoOverlay indicates that the incoming datagram could not be overlaid.
-	NoOverlay = errors.New("failed to overlay")
+	// ErrNoFrame indicates that a frame did not arrive within the retry limit.
+	ErrNoFrame = errors.New("frame did not arrive")
+	// ErrNoOverlay indicates that the incoming datagram could not be overlaid.
+	ErrNoOverlay = errors.New("failed to overlay")
 )
 
 // getFramelossTries returns the effective frame loss retry count.
@@ -78,19 +78,19 @@ func (o Options) getWCDeadline() time.Time { return o.WCDeadline }
 // ChooseDefaultError selects the appropriate error based on command state.
 func ChooseDefaultError(cmd *ExecutingCommand) error {
 	if !cmd.Arrived {
-		return NoFrame
+		return ErrNoFrame
 	}
 
 	if !cmd.Overlayed {
-		return NoOverlay
+		return ErrNoOverlay
 	}
 
 	return cmd.Error
 }
 
-// IsNoFrame checks if the error is a NoFrame error.
+// IsNoFrame checks if the error is an ErrNoFrame error.
 func IsNoFrame(err error) bool {
-	return err == NoFrame
+	return err == ErrNoFrame
 }
 
 // IsWorkingCounterError checks if the error is a WorkingCounterError.

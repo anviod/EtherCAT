@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -157,10 +158,9 @@ func (f *UDPFramer) Cycle() (iframes []*ecfr.Frame, err error) {
 		if isTimeout(err) {
 			if stretchcnt < 10 && len(iframes) < len(f.oframes) {
 				stretchcnt++
-				f.sock.SetReadDeadline(time.Now().Add(f.cycletime))
+				_ = f.sock.SetReadDeadline(time.Now().Add(f.cycletime))
 				continue
 			}
-			err = nil
 			break
 		}
 		if err != nil {
@@ -187,11 +187,19 @@ func (f *UDPFramer) Cycle() (iframes []*ecfr.Frame, err error) {
 // causing a stack overflow. This version correctly calls f.sock.Close()
 // and f.conn.Close() directly.
 func (f *UDPFramer) Close() error {
-	if f.conn != nil {
-		f.conn.Close()
-	}
+	var errs []error
 	if f.sock != nil {
-		return f.sock.Close()
+		if err := f.sock.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if f.conn != nil {
+		if err := f.conn.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("udp framer close: %v", errs[0])
 	}
 	return nil
 }
@@ -203,7 +211,7 @@ func (f *UDPFramer) DebugMessage(m string) {
 	addr.Port = 1024
 
 	// The error is intentionally ignored.
-	f.sock.WriteTo([]byte(m), &addr)
+	_, _ = f.sock.WriteTo([]byte(m), &addr)
 }
 
 // isTimeout reports whether err is a net.Error with a Timeout() == true.

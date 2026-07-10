@@ -12,105 +12,10 @@ import (
 
 // ─── Mock Implementations ─────────────────────────────────────────────────────
 
-// mockCommander implements Commander for testing.
-type mockCommander struct {
-	mu       sync.Mutex
-	commands []*mockCmd
-	newErr   error
-	cycleErr error
-	// If set, Cycle() will set this working counter on all response datagrams.
-	wc uint16
-	// If set, Cycle() will set Arrived/Overlayed to false to simulate frame loss.
-	noArrive bool
-	// If set, Cycle() will set Overlayed to false.
-	noOverlay bool
-}
-
+// mockCmd is a command record used by mock implementations.
 type mockCmd struct {
 	ec      *ExecutingCommand
 	datalen int
-}
-
-func (m *mockCommander) New(datalen int) (*ExecutingCommand, error) {
-	if m.newErr != nil {
-		return nil, m.newErr
-	}
-
-	buf := make([]byte, datalen+ecfr.DatagramOverheadLength)
-	dg, err := ecfr.PointDatagramTo(buf)
-	if err != nil {
-		return nil, err
-	}
-	if err := dg.SetDataLen(datalen); err != nil {
-		return nil, err
-	}
-
-	ec := &ExecutingCommand{
-		DatagramOut: &dg,
-	}
-
-	m.mu.Lock()
-	m.commands = append(m.commands, &mockCmd{ec: ec, datalen: datalen})
-	m.mu.Unlock()
-
-	return ec, nil
-}
-
-func (m *mockCommander) Cycle() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for _, cmd := range m.commands {
-		if cmd.ec.Arrived {
-			continue // already set (e.g., from previous cycle in retry loop)
-		}
-
-		if m.noArrive {
-			cmd.ec.Arrived = false
-			cmd.ec.Overlayed = false
-			continue
-		}
-
-		dgo := cmd.ec.DatagramOut
-		rsBuf := make([]byte, dgo.ByteLen())
-		rsDg, err := ecfr.PointDatagramTo(rsBuf)
-		if err != nil {
-			return err
-		}
-		if err := rsDg.SetDataLen(int(dgo.Header.DataLength())); err != nil {
-			return err
-		}
-		rsDg.Header.Command = dgo.Header.Command
-		rsDg.Header.Addr32 = dgo.Header.Addr32
-		rsDg.Header.Index = dgo.Header.Index
-		copy(rsDg.Data, dgo.Data)
-
-		wc := m.wc
-		if wc == 0 {
-			wc = 1
-		}
-		rsDg.WKC = wc
-
-		cmd.ec.DatagramIn = &rsDg
-		cmd.ec.Arrived = true
-		if m.noOverlay {
-			cmd.ec.Overlayed = false
-		} else {
-			cmd.ec.Overlayed = true
-		}
-	}
-
-	return m.cycleErr
-}
-
-func (m *mockCommander) Close() error {
-	return nil
-}
-
-func (m *mockCommander) Reset() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.commands = nil
 }
 
 // mockFramer implements Framer for testing CommandFramer.
@@ -156,23 +61,6 @@ func (f *mockFramer) Cycle() ([]*ecfr.Frame, error) {
 	return f.frames, nil
 }
 
-// makeLenDgram creates a datagram with the given payload length, index, and last flag.
-func makeLenDgram(plen int, index uint8, last bool) *ecfr.Datagram {
-	ub := make([]byte, plen+ecfr.DatagramOverheadLength)
-	dgram, err := ecfr.PointDatagramTo(ub)
-	if err != nil {
-		panic(err)
-	}
-	if err := dgram.SetDataLen(plen); err != nil {
-		panic(err)
-	}
-
-	dgram.Header.Index = index
-	dgram.Header.SetLast(last)
-
-	return &dgram
-}
-
 // makeAddr creates a positional DatagramAddress.
 func makeAddr(position uint16, offset uint16) ecfr.DatagramAddress {
 	return ecfr.PositionalAddr(int16(position), offset)
@@ -213,26 +101,26 @@ func TestWorkingCounterErrorString(t *testing.T) {
 // ─── Sentinel Error Tests ─────────────────────────────────────────────────────
 
 func TestNoFrame(t *testing.T) {
-	if NoFrame.Error() != "frame did not arrive" {
-		t.Errorf("unexpected NoFrame message: %s", NoFrame.Error())
+	if ErrNoFrame.Error() != "frame did not arrive" {
+		t.Errorf("unexpected ErrNoFrame message: %s", ErrNoFrame.Error())
 	}
 }
 
 func TestNoOverlay(t *testing.T) {
-	if NoOverlay.Error() != "failed to overlay" {
-		t.Errorf("unexpected NoOverlay message: %s", NoOverlay.Error())
+	if ErrNoOverlay.Error() != "failed to overlay" {
+		t.Errorf("unexpected ErrNoOverlay message: %s", ErrNoOverlay.Error())
 	}
 }
 
 func TestIsNoFrame(t *testing.T) {
-	if !IsNoFrame(NoFrame) {
-		t.Error("IsNoFrame(NoFrame) should be true")
+	if !IsNoFrame(ErrNoFrame) {
+		t.Error("IsNoFrame(ErrNoFrame) should be true")
 	}
 	if IsNoFrame(errors.New("frame did not arrive")) {
 		t.Error("IsNoFrame on a different error with same message should be false")
 	}
-	if IsNoFrame(NoOverlay) {
-		t.Error("IsNoFrame(NoOverlay) should be false")
+	if IsNoFrame(ErrNoOverlay) {
+		t.Error("IsNoFrame(ErrNoOverlay) should be false")
 	}
 	if IsNoFrame(nil) {
 		t.Error("IsNoFrame(nil) should be false")
@@ -259,8 +147,8 @@ func TestChooseDefaultError_NoFrame(t *testing.T) {
 		Overlayed: false,
 	}
 	err := ChooseDefaultError(ec)
-	if err != NoFrame {
-		t.Errorf("expected NoFrame, got %v", err)
+	if err != ErrNoFrame {
+		t.Errorf("expected ErrNoFrame, got %v", err)
 	}
 }
 
@@ -270,8 +158,8 @@ func TestChooseDefaultError_NoOverlay(t *testing.T) {
 		Overlayed: false,
 	}
 	err := ChooseDefaultError(ec)
-	if err != NoOverlay {
-		t.Errorf("expected NoOverlay, got %v", err)
+	if err != ErrNoOverlay {
+		t.Errorf("expected ErrNoOverlay, got %v", err)
 	}
 }
 
@@ -431,7 +319,7 @@ func TestExecuteReadOptions_RetryExhausted(t *testing.T) {
 		t.Error("expected error after exhausting retries")
 	}
 	if !IsNoFrame(err) {
-		t.Errorf("expected NoFrame, got %v", err)
+		t.Errorf("expected ErrNoFrame, got %v", err)
 	}
 }
 
@@ -600,7 +488,7 @@ func TestExecuteWriteOptions_RetryExhausted(t *testing.T) {
 		t.Error("expected error after exhausting retries")
 	}
 	if !IsNoFrame(err) {
-		t.Errorf("expected NoFrame, got %v", err)
+		t.Errorf("expected ErrNoFrame, got %v", err)
 	}
 }
 
