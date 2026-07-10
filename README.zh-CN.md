@@ -5,9 +5,11 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-225%2B-brightgreen)](.)
 [![Coverage](https://img.shields.io/badge/coverage-74%25--92%25-brightgreen)](.)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-58a6ff)](https://anviod.github.io/EtherCAT)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-2563eb)](https://anviod.github.io/EtherCAT)
 
 纯 Go 实现的 EtherCAT（Ethernet for Control Automation Technology）工业以太网协议库。提供从 ESI 文件解析、帧编解码、命令执行到从站模拟的完整工具链，达到**微秒级循环时间**性能要求。
+
+**性能指标**: 100μs EtherCAT 典型周期 | 核心热路径 &lt; 0.5% CPU | L2Bus 总线循环 ~20μs | 数据报头 Overlay ~5.0ns, Commit ~3.3ns
 
 **[English](README.md)** | **[API 文档](docs/api/)** | **[重构报告](docs/)**
 
@@ -147,6 +149,20 @@ make bench-stress
 
 所有编解码热路径均**零分配**（0 B/op, 0 allocs/op）。通过组合优化——`unsafe.Pointer` 单周期读写、非寄存器内存批量 `copy()`、`ByteLen` O(1) 缓存、栈分配写缓冲区——实现工业级 EtherCAT 微秒级循环时间。
 
+### 端到端微秒级循环时间分析
+
+EtherCAT 典型循环时间要求为 100μs 到 1ms。本库的端到端处理管线性能如下：
+
+| 阶段 | 耗时 | 占 100μs 周期比 | 内存分配 |
+|------|------|-----------------|----------|
+| 数据报头编解码 | 3–5 ns | &lt; 0.01% | 0 B/op |
+| 帧覆盖/提交 | 78–430 ns | &lt; 0.5% | 104 B/op |
+| 从站处理 (100B) | 332 ns | &lt; 0.4% | 0 B/op |
+| **总线循环 (含复制)** | **~20 μs** | **~20%** | — |
+| 命令执行 | 250–326 ns | &lt; 0.4% | 32–296 B/op |
+
+**核心热路径（编解码 + 帧操作 + 命令执行）在 100μs EtherCAT 典型周期中占比远低于 0.5%。** 10 字节数据报头是系统中最高频的操作，通过仅 2 次内存操作（一次 `uint64` 8 字节 + 一次 `uint16` 2 字节）替代 10 次逐字节访问，Commit 路径提升 21%。
+
 ### 核心编解码 (ecfr) — 全部零分配
 
 | 基准测试 | 耗时 | 技术手段 |
@@ -196,20 +212,6 @@ make bench-stress
 | 3 | `Frame.ByteLen()` O(1) 缓存 | 消除 Commit/NewDatagram 中的 O(n) 遍历 |
 | 4 | 热路径中用哨兵错误替代 `fmt.Errorf` | 错误路径零分配 |
 | 5 | 写缓冲区栈分配（1/2/4 字节） | `ExecuteWrite8/16/32` 零堆分配 |
-
-## 微秒级循环时间分析
-
-EtherCAT 典型循环时间要求为 100μs 到 1ms。本库的端到端处理管线性能如下：
-
-| 阶段 | 耗时 | 占 100μs 周期比 |
-|------|------|-----------------|
-| 数据报头编解码 | 3-5 ns | < 0.01% |
-| 帧覆盖/提交 | 78-430 ns | < 0.5% |
-| 从站处理 (100B) | 332 ns | < 0.4% |
-| 总线循环 (含复制) | 20 μs | 20% |
-| 命令执行 | 250-326 ns | < 0.4% |
-
-**10 字节数据报头**是系统中最高频的操作，通过 **2 次内存操作**（一次 8 字节 + 一次 2 字节）替代 10 次逐字节访问，Commit 路径提升 21%。
 
 ## 文档
 

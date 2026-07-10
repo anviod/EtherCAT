@@ -1045,3 +1045,222 @@ func TestL2SlaveMaxDataLength(t *testing.T) {
 			frame.Datagrams[0].Data[dataLen-1], byte((dataLen-1)&0xFF))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// 扩展热路径测试 (Extended Hot-Path Tests)
+// ---------------------------------------------------------------------------
+
+// TestL2BusCycleMultiSlave verifies L2Bus.Cycle correctly processes frames
+// through multiple slaves using broadcast addressing.
+// 验证 L2Bus.Cycle 使用广播寻址正确处理多从站帧处理。
+func TestL2BusCycleMultiSlave(t *testing.T) {
+	bus := &L2Bus{}
+	for i := 0; i < 3; i++ {
+		slave := NewL2Slave()
+		slave.BackingMemory[0x1000] = byte(0x10 + i)
+		bus.Slaves = append(bus.Slaves, slave)
+	}
+
+	frame, _ := bus.New(256)
+	dg, _ := frame.NewDatagram(4)
+	dg.Header.Command = ecfr.BRD
+	dg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+	dg.Header.SetLast(true)
+
+	iframes, err := bus.Cycle()
+	if err != nil {
+		t.Fatalf("Cycle failed: %v", err)
+	}
+	if len(iframes) != 1 {
+		t.Fatalf("expected 1 frame, got %d", len(iframes))
+	}
+	// WKC should be incremented by all 3 slaves for broadcast
+	if iframes[0].Datagrams[0].WKC != 3 {
+		t.Errorf("expected WKC=3 (3 slaves broadcast), got %d", iframes[0].Datagrams[0].WKC)
+	}
+}
+
+// TestL2BusCycleReadAfterWrite verifies L2Bus.Cycle correctly handles a
+// write followed by a read across separate frames.
+// 验证 L2Bus.Cycle 正确处理跨帧的写后读操作。
+func TestL2BusCycleReadAfterWrite(t *testing.T) {
+	bus := &L2Bus{}
+	slave := NewL2Slave()
+	bus.Slaves = append(bus.Slaves, slave)
+
+	// Frame 1: Write 0x42 to 0x1000
+	wframe, _ := bus.New(256)
+	wdg, _ := wframe.NewDatagram(2)
+	wdg.Header.Command = ecfr.APWR
+	wdg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+	wdg.Data[0] = 0x42
+	wdg.Data[1] = 0x43
+	wdg.Header.SetLast(true)
+
+	iframes, err := bus.Cycle()
+	if err != nil {
+		t.Fatalf("Write cycle failed: %v", err)
+	}
+	if len(iframes) != 1 {
+		t.Fatalf("expected 1 frame, got %d", len(iframes))
+	}
+
+	// Frame 2: Read back from 0x1000
+	rframe, _ := bus.New(256)
+	rdg, _ := rframe.NewDatagram(2)
+	rdg.Header.Command = ecfr.APRD
+	rdg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+	rdg.Header.SetLast(true)
+
+	iframes, err = bus.Cycle()
+	if err != nil {
+		t.Fatalf("Read cycle failed: %v", err)
+	}
+	if len(iframes) != 1 {
+		t.Fatalf("expected 1 frame, got %d", len(iframes))
+	}
+	// The read should see the value written by the previous frame
+	if iframes[0].Datagrams[0].Data[0] != 0x42 {
+		t.Errorf("read data[0] = 0x%02X, want 0x42", iframes[0].Datagrams[0].Data[0])
+	}
+	if iframes[0].Datagrams[0].Data[1] != 0x43 {
+		t.Errorf("read data[1] = 0x%02X, want 0x43", iframes[0].Datagrams[0].Data[1])
+	}
+}
+
+// TestL2BusCycleBroadcast verifies L2Bus.Cycle handles broadcast datagrams
+// (BRD) correctly, where all slaves increment WKC.
+// 验证 L2Bus.Cycle 正确处理广播数据报 (BRD)，所有从站均递增 WKC。
+func TestL2BusCycleBroadcast(t *testing.T) {
+	bus := &L2Bus{}
+	for i := 0; i < 5; i++ {
+		slave := NewL2Slave()
+		slave.BackingMemory[0x1000] = byte(0xAA)
+		bus.Slaves = append(bus.Slaves, slave)
+	}
+
+	frame, _ := bus.New(256)
+	dg, _ := frame.NewDatagram(4)
+	dg.Header.Command = ecfr.BRD
+	dg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+	dg.Header.SetLast(true)
+
+	iframes, err := bus.Cycle()
+	if err != nil {
+		t.Fatalf("Cycle failed: %v", err)
+	}
+	if len(iframes) != 1 {
+		t.Fatalf("expected 1 frame, got %d", len(iframes))
+	}
+	// All 5 slaves should increment WKC for broadcast
+	if iframes[0].Datagrams[0].WKC != 5 {
+		t.Errorf("expected WKC=5 (5 slaves broadcast), got %d", iframes[0].Datagrams[0].WKC)
+	}
+}
+
+// TestL2BusCycleEmptySlaves verifies L2Bus.Cycle handles bus with no slaves.
+// 验证 L2Bus.Cycle 处理无从站的总线。
+func TestL2BusCycleEmptySlaves(t *testing.T) {
+	bus := &L2Bus{}
+
+	frame, _ := bus.New(256)
+	dg, _ := frame.NewDatagram(4)
+	dg.Header.Command = ecfr.APRD
+	dg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+	dg.Header.SetLast(true)
+
+	iframes, err := bus.Cycle()
+	if err != nil {
+		t.Fatalf("Cycle with empty slaves should not error: %v", err)
+	}
+	if len(iframes) != 1 {
+		t.Fatalf("expected 1 frame, got %d", len(iframes))
+	}
+	// WKC should remain 0 with no slaves
+	if iframes[0].Datagrams[0].WKC != 0 {
+		t.Errorf("expected WKC=0 (no slaves), got %d", iframes[0].Datagrams[0].WKC)
+	}
+}
+
+// TestL2BusCloseCleanup verifies L2Bus.Close correctly cleans up resources.
+// 验证 L2Bus.Close 正确清理资源。
+func TestL2BusCloseCleanup(t *testing.T) {
+	bus := &L2Bus{}
+	slave := NewL2Slave()
+	bus.Slaves = append(bus.Slaves, slave)
+
+	err := bus.Close()
+	if err != nil {
+		t.Errorf("Close should not error: %v", err)
+	}
+}
+
+// TestL2SlaveNOPCommand verifies that a NOP command does not modify WKC.
+// 验证 NOP 命令不修改 WKC。
+func TestL2SlaveNOPCommand(t *testing.T) {
+	slave := NewL2Slave()
+	addr := ecfr.PositionalAddr(0, 0x1000)
+
+	frame := makeTestFrame(ecfr.NOP, addr.Addr32(), 4, nil)
+	slave.ProcessFrame(frame)
+
+	// NOP commands should not increment WKC
+	if frame.Datagrams[0].WKC != 0 {
+		t.Errorf("NOP WKC = %d, want 0", frame.Datagrams[0].WKC)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 扩展热路径基准测试 (Extended Hot-Path Benchmarks)
+// ---------------------------------------------------------------------------
+
+// BenchmarkL2BusCycleMultiSlave benchmarks L2Bus.Cycle with 3 slaves to
+// measure multi-slave bus cycle performance.
+// 基准测试 3 从站 L2Bus.Cycle 性能。
+func BenchmarkL2BusCycleMultiSlave(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bus := &L2Bus{}
+		for j := 0; j < 3; j++ {
+			slave := NewL2Slave()
+			slave.BackingMemory[0x1000] = byte(0x10 + j)
+			bus.Slaves = append(bus.Slaves, slave)
+		}
+
+		frame, _ := bus.New(256)
+		dg, _ := frame.NewDatagram(4)
+		dg.Header.Command = ecfr.APRD
+		dg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+		dg.Header.SetLast(true)
+
+		bus.Cycle()
+	}
+}
+
+// BenchmarkL2BusFullPipelineMultiSlave benchmarks full pipeline with 3 slaves
+// using broadcast addressing (create→fill→cycle→verify).
+// 基准测试 3 从站完整管线性能（创建→填充→循环→验证），使用广播寻址。
+func BenchmarkL2BusFullPipelineMultiSlave(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bus := &L2Bus{}
+		for j := 0; j < 3; j++ {
+			slave := NewL2Slave()
+			slave.BackingMemory[0x1000] = byte(0x42 + byte(j))
+			bus.Slaves = append(bus.Slaves, slave)
+		}
+
+		frame, _ := bus.New(256)
+		dg, _ := frame.NewDatagram(4)
+		dg.Header.Command = ecfr.BRD
+		dg.Header.Addr32 = ecfr.DatagramAddressFromCommand(ecfr.PositionalAddr(0, 0x1000).Addr32(), ecfr.BRD).Addr32()
+		dg.Header.SetLast(true)
+
+		iframes, _ := bus.Cycle()
+		if len(iframes) != 1 || iframes[0].Datagrams[0].WKC != 3 {
+			b.Fatal("pipeline verification failed")
+		}
+	}
+}

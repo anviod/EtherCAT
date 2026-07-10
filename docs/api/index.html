@@ -7,14 +7,14 @@
     <title>ecat API Documentation / API 文档</title>
     <style>
         :root {
-            --bg: #0d1117;
-            --bg2: #161b22;
-            --ink: #e6edf3;
-            --muted: #7d8590;
-            --rule: #30363d;
-            --accent: #58a6ff;
-            --accent2: #3fb950;
-            --code-bg: #1c2128;
+            --bg: #f5f6f8;
+            --bg2: #ffffff;
+            --ink: #1a1a2e;
+            --muted: #6b7280;
+            --rule: #e5e7eb;
+            --accent: #2563eb;
+            --accent2: #059669;
+            --code-bg: #f1f5f9;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -51,6 +51,7 @@
             border-radius: 8px;
             padding: 1rem 1.2rem;
             transition: border-color 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .pkg-card:hover { border-color: var(--accent); }
         .pkg-card .name {
@@ -79,8 +80,8 @@
             margin-left: 0.5rem;
             vertical-align: middle;
         }
-        .lang-en { background: rgba(88,166,255,0.15); color: var(--accent); }
-        .lang-zh { background: rgba(63,185,80,0.15); color: var(--accent2); }
+        .lang-en { background: rgba(37,99,235,0.1); color: var(--accent); }
+        .lang-zh { background: rgba(5,150,105,0.1); color: var(--accent2); }
         footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.85rem; }
     </style>
 </head>
@@ -141,11 +142,13 @@
     </div>
 
     <h2>Quick Reference <span class="lang-tag lang-zh">快速参考</span></h2>
-    <h3>Zero-Allocation Hot Path <span class="lang-tag lang-zh">零分配热路径</span></h3>
+    <h3>Microsecond-Level Performance <span class="lang-tag lang-zh">微秒级性能</span></h3>
     <p>
         All encoding/decoding operations use <code>unsafe.Pointer</code> with single
-        <code>uint64</code>+<code>uint16</code> memory operations. DatagramHeader.Overlay: ~5ns, Commit: ~3.3ns.<br>
+        <code>uint64</code>+<code>uint16</code> memory operations. DatagramHeader.Overlay: ~5ns, Commit: ~3.3ns.
+        Core hot path &lt; 0.5% of typical 100μs EtherCAT cycle time. L2Bus cycle ~20μs.<br>
         所有编解码操作使用 <code>unsafe.Pointer</code> 单次 <code>uint64</code>+<code>uint16</code> 内存操作。数据报头 Overlay: ~5ns, Commit: ~3.3ns。
+        核心热路径在 100μs EtherCAT 典型周期中占比 &lt; 0.5%。L2Bus 总线循环 ~20μs。
     </p>
 
     <h3>Package Dependencies <span class="lang-tag lang-zh">包依赖关系</span></h3>
@@ -158,7 +161,8 @@
 
     <footer>
         Generated from source code with <code>go doc -all</code> / 使用 <code>go doc -all</code> 从源码生成<br>
-        Part of the <a href="../index.html">ecat refactoring report</a> / <a href="../index.html">ecat 重构报告</a> 的一部分
+        Part of the <a href="../index.html">ecat refactoring report</a> / <a href="../index.html">ecat 重构报告</a> 的一部分<br>
+        <a href="../arm/arm-optimization-report.html">ARM 优化专项报告</a>
     </footer>
 </body>
 </html>

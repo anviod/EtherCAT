@@ -1385,3 +1385,153 @@ func BenchmarkExecuteWriteStackAlloc(b *testing.B) {
 		_ = ExecuteWrite8(mc, addr, 0x42, 1)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// 扩展热路径基准测试 (Extended Hot-Path Benchmarks)
+// ---------------------------------------------------------------------------
+
+// BenchmarkExecuteRead16 benchmarks ExecuteRead16 with b.ReportAllocs to verify
+// allocation behavior on the 16-bit read hot path.
+// 基准测试 ExecuteRead16 热路径性能，使用 b.ReportAllocs 验证分配行为。
+func BenchmarkExecuteRead16(b *testing.B) {
+	b.ReportAllocs()
+	mc := &mockCommanderWithData{data: []byte{0x42, 0x00}}
+	addr := makeAddr(0, 0x120)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mc.cycleCount = 0
+		mc.commands = nil
+		_, _ = ExecuteRead16(mc, addr, 1)
+	}
+}
+
+// BenchmarkExecuteWrite16 benchmarks ExecuteWrite16 with b.ReportAllocs to verify
+// allocation behavior on the 16-bit write hot path.
+// 基准测试 ExecuteWrite16 热路径性能，使用 b.ReportAllocs 验证分配行为。
+func BenchmarkExecuteWrite16(b *testing.B) {
+	b.ReportAllocs()
+	mc := &mockCommanderWithData{}
+	addr := makeAddr(0, 0x120)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mc.cycleCount = 0
+		mc.commands = nil
+		_ = ExecuteWrite16(mc, addr, 0x4243, 1)
+	}
+}
+
+// BenchmarkExecuteRead32 benchmarks ExecuteRead32 hot path.
+// 基准测试 ExecuteRead32 热路径性能。
+func BenchmarkExecuteRead32(b *testing.B) {
+	b.ReportAllocs()
+	mc := &mockCommanderWithData{data: []byte{0x42, 0x43, 0x44, 0x45}}
+	addr := makeAddr(0, 0x120)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mc.cycleCount = 0
+		mc.commands = nil
+		_, _ = ExecuteRead32(mc, addr, 1)
+	}
+}
+
+// BenchmarkExecuteWrite32 benchmarks ExecuteWrite32 hot path.
+// 基准测试 ExecuteWrite32 热路径性能。
+func BenchmarkExecuteWrite32(b *testing.B) {
+	b.ReportAllocs()
+	mc := &mockCommanderWithData{}
+	addr := makeAddr(0, 0x120)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mc.cycleCount = 0
+		mc.commands = nil
+		_ = ExecuteWrite32(mc, addr, 0x42434445, 1)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 热路径错误条件测试 (Hot-Path Error Condition Tests)
+// ---------------------------------------------------------------------------
+
+// TestExecuteReadWithFrameloss verifies that ExecuteRead handles frame loss
+// retries correctly when the Commander returns ErrNoFrame.
+// 验证 ExecuteRead 在 Commander 返回 ErrNoFrame 时正确处理帧丢失重试。
+func TestExecuteReadWithFrameloss(t *testing.T) {
+	mc := &mockCommanderWithData{data: []byte{0x42}, noArriveCount: 2}
+	addr := makeAddr(0, 0x120)
+
+	opts := Options{FramelossTries: 3}
+	val, err := ExecuteRead8Options(mc, addr, 1, opts)
+	if err != nil {
+		t.Errorf("ExecuteRead8Options should succeed after retries: %v", err)
+	}
+	if val != 0x42 {
+		t.Errorf("expected 0x42, got 0x%02X", val)
+	}
+}
+
+// TestExecuteReadFramelossExceeded verifies that ExecuteRead returns error
+// when frame loss retries are exhausted.
+// 验证 ExecuteRead 在帧丢失重试次数耗尽后返回错误。
+func TestExecuteReadFramelossExceeded(t *testing.T) {
+	mc := &mockCommanderWithData{data: []byte{0x42}, noArriveCount: 10}
+	addr := makeAddr(0, 0x120)
+
+	opts := Options{FramelossTries: 2}
+	_, err := ExecuteRead8Options(mc, addr, 1, opts)
+	if err == nil {
+		t.Error("expected error when frame loss retries exhausted, got nil")
+	}
+	if !IsNoFrame(err) {
+		t.Errorf("expected ErrNoFrame, got %T: %v", err, err)
+	}
+}
+
+// TestExecuteReadWKCDeadline verifies that ExecuteRead detects WKC deadline
+// timeout correctly with persistent WKC mismatch.
+// 验证 ExecuteRead 正确检测 WKC 截止时间超时（持续 WKC 不匹配）。
+func TestExecuteReadWKCDeadline(t *testing.T) {
+	mc := &mockCommanderWithData{data: []byte{0x00}, wc: 2} // wc=2, expected=1
+	addr := makeAddr(0, 0x120)
+
+	opts := Options{WCDeadline: time.Now().Add(50 * time.Millisecond)}
+	_, err := ExecuteRead8Options(mc, addr, 1, opts)
+	if err == nil {
+		t.Error("expected error when WKC deadline exceeded, got nil")
+	}
+	if !IsWorkingCounterError(err) {
+		t.Errorf("expected WorkingCounterError, got %T: %v", err, err)
+	}
+}
+
+// TestExecuteWriteWithFrameloss verifies ExecuteWrite frame loss retry behavior.
+// 验证 ExecuteWrite 的帧丢失重试行为。
+func TestExecuteWriteWithFrameloss(t *testing.T) {
+	mc := &mockCommanderWithData{noArriveCount: 1}
+	addr := makeAddr(0, 0x120)
+
+	opts := Options{FramelossTries: 3}
+	err := ExecuteWrite8Options(mc, addr, 0x42, 1, opts)
+	if err != nil {
+		t.Errorf("ExecuteWrite8Options should succeed after retries: %v", err)
+	}
+}
+
+// TestExecuteWriteWKCError verifies that ExecuteWrite detects WKC mismatch
+// and returns a WorkingCounterError.
+// 验证 ExecuteWrite 检测到 WKC 不匹配并返回 WorkingCounterError。
+func TestExecuteWriteWKCError(t *testing.T) {
+	mc := &mockCommanderWithData{wc: 2} // WKC=2, expected=1
+	addr := makeAddr(0, 0x120)
+
+	err := ExecuteWrite8(mc, addr, 0x42, 1)
+	if err == nil {
+		t.Error("expected WorkingCounterError for WKC mismatch, got nil")
+	}
+	if !IsWorkingCounterError(err) {
+		t.Errorf("expected WorkingCounterError, got %T: %v", err, err)
+	}
+}

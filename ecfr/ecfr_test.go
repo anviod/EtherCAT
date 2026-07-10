@@ -647,6 +647,93 @@ func BenchmarkFrameOverlay(b *testing.B) {
 	}
 }
 
+// BenchmarkFrameOverlayReuse benchmarks Frame.OverlayReuse with a pre-allocated
+// Datagram pool to measure the allocation reduction on repeated calls.
+// 基准测试 Frame.OverlayReuse 使用预分配 Datagram 池减少分配的效果。
+// Perf: on ARM64, reusing Datagram pointers avoids the 2 allocs/op in Frame.Overlay.
+// 性能优化：ARM64 上复用 Datagram 指针可避免 Frame.Overlay 的 2 allocs/op。
+func BenchmarkFrameOverlayReuse(b *testing.B) {
+	b.ReportAllocs()
+
+	// Prepare a frame with 1 datagram (same as BenchmarkFrameOverlay).
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0
+	buf[2+7] = 0
+
+	// Pre-allocate a Datagram pool sized for 1 datagram.
+	dgPool := make([]*Datagram, 0, 1)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var f Frame
+		f.OverlayReuse(buf, dgPool)
+		// Reset pool for next iteration (slice header only, no alloc).
+		dgPool = dgPool[:0]
+	}
+}
+
+// BenchmarkFrameOverlayPool benchmarks FrameOverlayPool.Overlay, the
+// recommended zero-allocation path for repeated frame decoding.
+// 基准测试 FrameOverlayPool.Overlay——推荐的零分配帧解码路径。
+func BenchmarkFrameOverlayPool(b *testing.B) {
+	b.ReportAllocs()
+
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0
+	buf[2+7] = 0
+
+	pool := NewFrameOverlayPool(1)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var f Frame
+		pool.Overlay(&f, buf)
+	}
+}
+
+// BenchmarkFrameOverlayReuseMultiDatagram benchmarks OverlayReuse with a
+// multi-datagram frame (3 datagrams) + pre-allocated pool.
+// 基准测试多数据报帧（3 个数据报）的 OverlayReuse + 预分配池性能。
+func BenchmarkFrameOverlayReuseMultiDatagram(b *testing.B) {
+	b.ReportAllocs()
+
+	// Build a frame with 3 datagrams: NOP(0b) + APRD(4b) + APWR(8b)
+	buf := make([]byte, 2+10+0+2+10+4+2+10+8+2)
+	// Frame header length = sum of datagram wire lengths = 12+16+20 = 48
+	buf[0] = 48
+	buf[1] = 0
+	// DG1: NOP, not last (bit15=1 means more follow)
+	off := 2
+	buf[off+0] = byte(NOP)
+	buf[off+6] = 0
+	buf[off+7] = 0x80 // bit15=1 → not last
+	// DG2: APRD, 4 bytes, not last
+	off += 10 + 0 + 2
+	buf[off+0] = byte(APRD)
+	buf[off+6] = 4
+	buf[off+7] = 0x80 // bit15=1 → not last
+	// DG3: APWR, 8 bytes, last (bit15=0 means last)
+	off += 10 + 4 + 2
+	buf[off+0] = byte(APWR)
+	buf[off+6] = 8
+	buf[off+7] = 0x00 // bit15=0 → last
+
+	dgPool := make([]*Datagram, 0, 3)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var f Frame
+		f.OverlayReuse(buf, dgPool)
+		dgPool = dgPool[:0]
+	}
+}
+
 func BenchmarkFrameNewDatagram(b *testing.B) {
 	buf := make([]byte, 1500)
 	f, _ := PointFrameTo(buf)
@@ -1075,5 +1162,394 @@ func TestByteLenCache(t *testing.T) {
 	// 验证数据报数量一致
 	if len(f2.Datagrams) != len(dataLens) {
 		t.Fatalf("got %d datagrams, want %d", len(f2.Datagrams), len(dataLens))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 零分配验证测试 (Zero-Allocation Assertion Tests)
+// ---------------------------------------------------------------------------
+
+// TestDatagramHeaderOverlayZeroAlloc verifies DatagramHeader.Overlay performs
+// zero heap allocations using the uint64+uint16 single-read strategy.
+// 验证 DatagramHeader.Overlay 使用 uint64+uint16 单次读取策略实现零堆分配。
+func TestDatagramHeaderOverlayZeroAlloc(t *testing.T) {
+	buf := make([]byte, 10)
+	buf[0] = byte(APRD)
+	buf[6] = 32
+	buf[7] = 0
+
+	allocs := testing.AllocsPerRun(100, func() {
+		var h DatagramHeader
+		h.Overlay(buf)
+	})
+	if allocs > 0 {
+		t.Errorf("DatagramHeader.Overlay allocated %f allocs/op, want 0", allocs)
+	}
+}
+
+// TestDatagramHeaderCommitZeroAlloc verifies DatagramHeader.Commit performs
+// zero heap allocations using the uint64+uint16 single-write strategy.
+// 验证 DatagramHeader.Commit 使用 uint64+uint16 单次写入策略实现零堆分配。
+func TestDatagramHeaderCommitZeroAlloc(t *testing.T) {
+	buf := make([]byte, 10)
+	dg, _ := PointDatagramTo(buf)
+	dg.Header.Command = APRD
+	_ = dg.SetDataLen(32)
+	dg.WKC = 1
+
+	allocs := testing.AllocsPerRun(100, func() {
+		dg.Header.Commit()
+	})
+	if allocs > 0 {
+		t.Errorf("DatagramHeader.Commit allocated %f allocs/op, want 0", allocs)
+	}
+}
+
+// TestDatagramOverlayZeroAlloc verifies Datagram.Overlay performs zero heap
+// allocations (header overlay + WKC via unsafe.Pointer).
+// 验证 Datagram.Overlay 实现零堆分配（头部覆盖 + WKC via unsafe.Pointer）。
+func TestDatagramOverlayZeroAlloc(t *testing.T) {
+	buf := make([]byte, 10+32+2)
+	buf[0] = byte(APRD)
+	buf[6] = 32
+	buf[7] = 0
+
+	allocs := testing.AllocsPerRun(100, func() {
+		var dg Datagram
+		dg.Overlay(buf)
+	})
+	if allocs > 0 {
+		t.Errorf("Datagram.Overlay allocated %f allocs/op, want 0", allocs)
+	}
+}
+
+// TestDatagramCommitZeroAlloc verifies Datagram.Commit performs zero heap
+// allocations on the hot path (header commit + WKC write).
+// 验证 Datagram.Commit 在热路径上实现零堆分配（头部提交 + WKC 写入）。
+func TestDatagramCommitZeroAlloc(t *testing.T) {
+	buf := make([]byte, 10+32+2)
+	dg, _ := PointDatagramTo(buf)
+	dg.Header.Command = APRD
+	_ = dg.SetDataLen(32)
+	dg.WKC = 1
+
+	allocs := testing.AllocsPerRun(100, func() {
+		dg.Commit()
+	})
+	if allocs > 0 {
+		t.Errorf("Datagram.Commit allocated %f allocs/op, want 0", allocs)
+	}
+}
+
+// TestETHFrameWriteDownZeroAlloc verifies ETHFrame.WriteDown performs zero
+// heap allocations on the hot path.
+// 验证 ETHFrame.WriteDown 在热路径上实现零堆分配。
+func TestETHFrameWriteDownZeroAlloc(t *testing.T) {
+	buf := make([]byte, 64)
+	ef, _ := OverlayETHFrame(buf)
+	ef.Destination = ETHAddr{}
+	ef.Source = ETHAddr{}
+	ef.Type = 0x88a4
+
+	allocs := testing.AllocsPerRun(100, func() {
+		ef.WriteDown()
+	})
+	if allocs > 0 {
+		t.Errorf("ETHFrame.WriteDown allocated %f allocs/op, want 0", allocs)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 热路径边界条件与错误测试 (Hot-Path Boundary & Error Tests)
+// ---------------------------------------------------------------------------
+
+// TestDatagramOverlayNilBuffer verifies Overlay handles nil buffer gracefully.
+// 验证 Overlay 对 nil 缓冲区的优雅处理。
+func TestDatagramOverlayNilBuffer(t *testing.T) {
+	var dg Datagram
+	_, err := dg.Overlay(nil)
+	if err == nil {
+		t.Error("expected error for nil buffer, got nil")
+	}
+}
+
+// TestDatagramOverlayTooShort verifies Overlay detects undersized buffers.
+// 验证 Overlay 检测到缓冲区过短。
+func TestDatagramOverlayTooShort(t *testing.T) {
+	var dg Datagram
+	_, err := dg.Overlay(make([]byte, 5))
+	if err == nil {
+		t.Error("expected error for buffer < 12 bytes, got nil")
+	}
+}
+
+// TestDatagramCommitOnNilBuffer verifies Commit gracefully handles nil buffer.
+// 验证 Commit 对 nil 缓冲区的优雅处理。
+func TestDatagramCommitOnNilBuffer(t *testing.T) {
+	buf := make([]byte, 10+32+2)
+	dg, _ := PointDatagramTo(buf)
+	dg.Header.Command = APRD
+	_ = dg.SetDataLen(32)
+
+	_, err := dg.Commit()
+	if err != nil {
+		t.Errorf("Commit on valid buffer should not error: %v", err)
+	}
+}
+
+// TestFrameOverlayEmptyFrame verifies Overlay of an empty frame returns error.
+// 验证空帧的 Overlay 返回错误。
+func TestFrameOverlayEmptyFrame(t *testing.T) {
+	var f Frame
+	_, err := f.Overlay(make([]byte, 0))
+	if err == nil {
+		t.Error("expected error for empty frame, got nil")
+	}
+}
+
+// TestFrameOverlayTooShortForHeader verifies Overlay detects buffer too short
+// for the frame header.
+// 验证 Overlay 检测到缓冲区不足以容纳帧头。
+func TestFrameOverlayTooShortForHeader(t *testing.T) {
+	var f Frame
+	_, err := f.Overlay(make([]byte, 1))
+	if err == nil {
+		t.Error("expected error for buffer < 2 bytes, got nil")
+	}
+}
+
+// TestFrameNewDatagramExceedsMax verifies NewDatagram rejects oversized data.
+// 验证 NewDatagram 拒绝超大 payload。
+func TestFrameNewDatagramExceedsMax(t *testing.T) {
+	buf := make([]byte, 1500)
+	f, _ := PointFrameTo(buf)
+	_, err := f.NewDatagram(2048) // exceeds DatagramMaxDataLength (2047)
+	if err == nil {
+		t.Error("expected error for datagram > 2047 bytes, got nil")
+	}
+}
+
+// TestFrameCommitEmptyFrame verifies Commit on an empty frame returns error.
+// 验证空帧的 Commit 返回错误。
+func TestFrameCommitEmptyFrame(t *testing.T) {
+	buf := make([]byte, 128)
+	f, _ := PointFrameTo(buf)
+	// Frame has no datagrams — Commit should return error
+	_, err := f.Commit()
+	if err == nil {
+		t.Error("expected error for empty frame, got nil")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FrameOverlayPool / OverlayReuse 单元测试
+// ---------------------------------------------------------------------------
+
+// TestFrameOverlayReuseBasic verifies OverlayReuse produces correct results
+// equal to standard Overlay, and that it works with nil pool.
+// 验证 OverlayReuse 与标准 Overlay 结果一致，且 nil pool 正常工作。
+func TestFrameOverlayReuseBasic(t *testing.T) {
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0
+	buf[2+7] = 0
+
+	// Overlay with nil pool (should match Overlay)
+	var f1, f2 Frame
+	_, err := f1.Overlay(buf)
+	if err != nil {
+		t.Fatalf("Overlay failed: %v", err)
+	}
+	_, err = f2.OverlayReuse(buf, nil)
+	if err != nil {
+		t.Fatalf("OverlayReuse(nil-pool) failed: %v", err)
+	}
+
+	if len(f2.Datagrams) != len(f1.Datagrams) {
+		t.Errorf("datagram count mismatch: %d vs %d", len(f2.Datagrams), len(f1.Datagrams))
+	}
+}
+
+// TestFrameOverlayReuseWithPool verifies OverlayReuse with a pre-allocated
+// pool correctly decodes frames across multiple calls without growing the pool.
+// 验证 OverlayReuse 使用预分配池在多次调用中正确解码，且不扩容池。
+func TestFrameOverlayReuseWithPool(t *testing.T) {
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0
+	buf[2+7] = 0
+
+	dgPool := make([]*Datagram, 0, 1)
+
+	for i := 0; i < 5; i++ {
+		var f Frame
+		_, err := f.OverlayReuse(buf, dgPool)
+		if err != nil {
+			t.Fatalf("iteration %d: OverlayReuse failed: %v", i, err)
+		}
+		if len(f.Datagrams) != 1 {
+			t.Errorf("iteration %d: expected 1 datagram, got %d", i, len(f.Datagrams))
+		}
+		// Pool should not grow beyond capacity
+		if cap(dgPool) != 1 {
+			t.Errorf("iteration %d: pool capacity grew to %d, want 1", i, cap(dgPool))
+		}
+		// Reset for next iteration
+		dgPool = dgPool[:0]
+	}
+}
+
+// TestFrameOverlayPoolBasic verifies FrameOverlayPool correctly decodes
+// frames across multiple calls and maintains zero allocations.
+// 验证 FrameOverlayPool 在多次调用中正确解码并保持零分配。
+func TestFrameOverlayPoolBasic(t *testing.T) {
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0
+	buf[2+7] = 0
+
+	pool := NewFrameOverlayPool(1)
+
+	for i := 0; i < 5; i++ {
+		var f Frame
+		_, err := pool.Overlay(&f, buf)
+		if err != nil {
+			t.Fatalf("iteration %d: pool.Overlay failed: %v", i, err)
+		}
+		if len(f.Datagrams) != 1 {
+			t.Errorf("iteration %d: expected 1 datagram, got %d", i, len(f.Datagrams))
+		}
+	}
+}
+
+// TestFrameOverlayReuseMultiDatagram verifies OverlayReuse with a
+// multi-datagram frame correctly decodes all datagrams.
+// 验证 OverlayReuse 正确解码多数据报帧。
+func TestFrameOverlayReuseMultiDatagram(t *testing.T) {
+	// Build frame: DG1=NOP(0b) + DG2=APRD(4b) + DG3=APWR(8b,last)
+	buf := make([]byte, 2+10+0+2+10+4+2+10+8+2)
+	// Frame header length = sum of datagram wire lengths:
+	// DG1: 10+0+2=12, DG2: 10+4+2=16, DG3: 10+8+2=20 => total=48
+	frameLen := 12 + 16 + 20
+	buf[0] = byte(frameLen)
+	buf[1] = byte(frameLen >> 8)
+	off := 2
+	buf[off+0] = byte(NOP)
+	buf[off+6] = 0
+	buf[off+7] = 0x80 // bit15=1 → not last
+	off += 10 + 0 + 2
+	buf[off+0] = byte(APRD)
+	buf[off+6] = 4
+	buf[off+7] = 0x80 // bit15=1 → not last
+	off += 10 + 4 + 2
+	buf[off+0] = byte(APWR)
+	buf[off+6] = 8
+	buf[off+7] = 0x00 // bit15=0 → last
+
+	dgPool := make([]*Datagram, 0, 3)
+
+	var f Frame
+	_, err := f.OverlayReuse(buf, dgPool)
+	if err != nil {
+		t.Fatalf("OverlayReuse multi-datagram failed: %v", err)
+	}
+
+	if len(f.Datagrams) != 3 {
+		t.Fatalf("expected 3 datagrams, got %d", len(f.Datagrams))
+	}
+	if f.Datagrams[0].Header.Command != NOP {
+		t.Errorf("DG0: expected NOP, got %v", f.Datagrams[0].Header.Command)
+	}
+	if f.Datagrams[1].Header.Command != APRD {
+		t.Errorf("DG1: expected APRD, got %v", f.Datagrams[1].Header.Command)
+	}
+	if f.Datagrams[2].Header.Command != APWR {
+		t.Errorf("DG2: expected APWR, got %v", f.Datagrams[2].Header.Command)
+	}
+	if !f.Datagrams[2].Header.Last() {
+		t.Error("DG2: expected Last()=true")
+	}
+	if len(f.Datagrams[2].Data) != 8 {
+		t.Errorf("DG2: expected 8 bytes data, got %d", len(f.Datagrams[2].Data))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 扩展热路径基准测试 (Extended Hot-Path Benchmarks)
+// ---------------------------------------------------------------------------
+
+// BenchmarkFrameCommit benchmarks the Frame.Commit hot path.
+// 基准测试 Frame.Commit 热路径性能。
+func BenchmarkFrameCommit(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		buf := make([]byte, 2+10+32+2)
+		f, _ := PointFrameTo(buf)
+		dg, _ := f.NewDatagram(32)
+		dg.Header.Command = APRD
+		dg.Header.SetLast(true)
+		b.StartTimer()
+
+		_, _ = f.Commit()
+	}
+}
+
+// BenchmarkDatagramHeaderOverlay benchmarks the DatagramHeader.Overlay hot path.
+// 基准测试 DatagramHeader.Overlay 热路径性能。
+func BenchmarkDatagramHeaderOverlay(b *testing.B) {
+	b.ReportAllocs()
+	buf := make([]byte, 10)
+	buf[0] = byte(APRD)
+	buf[6] = 32
+	buf[7] = 0
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var h DatagramHeader
+		h.Overlay(buf)
+	}
+}
+
+// BenchmarkDatagramHeaderCommit benchmarks the DatagramHeader.Commit hot path.
+// 基准测试 DatagramHeader.Commit 热路径性能。
+func BenchmarkDatagramHeaderCommit(b *testing.B) {
+	b.ReportAllocs()
+	buf := make([]byte, 10)
+	dg, _ := PointDatagramTo(buf)
+	dg.Header.Command = APRD
+	_ = dg.SetDataLen(32)
+	dg.WKC = 1
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		dg.Header.Commit()
+	}
+}
+
+// BenchmarkFrameOverlayZeroData benchmarks Frame.Overlay with a zero-data datagram.
+// 基准测试零数据数据报的 Frame.Overlay 性能。
+func BenchmarkFrameOverlayZeroData(b *testing.B) {
+	b.ReportAllocs()
+
+	b.StopTimer()
+	buf := make([]byte, 2+10+0+2)
+	buf[0] = 10 // frame length = 10 (header + datagram overhead)
+	buf[1] = 0
+	buf[2+0] = byte(NOP)
+	buf[2+6] = 0 // data length = 0
+	buf[2+7] = 0
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		var f Frame
+		f.Overlay(buf)
 	}
 }

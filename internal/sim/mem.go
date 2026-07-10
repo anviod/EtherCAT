@@ -58,6 +58,9 @@ func (b *L2Bus) Cycle() (iframes []*ecfr.Frame, err error) {
 			return
 		}
 
+		// Each frame gets its own buffer — Frame.Overlay stores a reference
+		// to the buffer, and Datagram objects reference it via unsafe.Pointer.
+		// 每帧独立缓冲区——Frame.Overlay 持有 buffer 引用，Datagram 通过 unsafe.Pointer 引用。
 		coframe := new(ecfr.Frame)
 		cbytes := make([]byte, len(obytes))
 		copy(cbytes, obytes)

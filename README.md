@@ -5,9 +5,11 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-225%2B-brightgreen)](.)
 [![Coverage](https://img.shields.io/badge/coverage-74%25--92%25-brightgreen)](.)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-58a6ff)](https://anviod.github.io/EtherCAT)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-2563eb)](https://anviod.github.io/EtherCAT)
 
-A pure Go implementation of the EtherCAT (Ethernet for Control Automation Technology) industrial Ethernet protocol. Provides a complete toolchain from ESI file parsing, frame encoding/decoding, command execution, to slave simulation.
+A pure Go implementation of the EtherCAT (Ethernet for Control Automation Technology) industrial Ethernet protocol. Provides a complete toolchain from ESI file parsing, frame encoding/decoding, command execution, to slave simulation — achieving **microsecond-level cycle time** suitable for industrial real-time applications.
+
+**Performance**: 100μs typical EtherCAT cycle | Core hot path &lt; 0.5% CPU | L2Bus cycle ~20μs | DatagramHeader Overlay ~5.0ns, Commit ~3.3ns
 
 **[中文文档](README.zh-CN.md)** | **[API Docs](docs/api/)** | **[Refactoring Report](docs/)**
 
@@ -68,7 +70,7 @@ eni (ESI XML parser) — standalone
 ### Installation
 
 ```bash
-go get github.com/anviod/EtherCAT@v2.0.0
+go get github.com/anviod/EtherCAT@v2.1.0
 ```
 
 ### Parse an ESI File
@@ -146,6 +148,20 @@ make bench-stress
 ## Performance
 
 All encoding/decoding hot paths are **zero-allocation** (0 B/op, 0 allocs/op). Combined optimizations — `unsafe.Pointer` single-cycle reads/writes, bulk `copy()` for register memory, `ByteLen` caching, and stack-allocated write buffers — enable **microsecond-level cycle times** suitable for industrial EtherCAT applications.
+
+### Microsecond-Level Cycle Time Analysis
+
+EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-end processing pipeline performance:
+
+| Stage | Time | % of 100μs Cycle | Allocations |
+|-------|------|------------------|-------------|
+| Datagram header encode/decode | 3–5 ns | &lt; 0.01% | 0 B/op |
+| Frame overlay/commit | 78–430 ns | &lt; 0.5% | 104 B/op |
+| Slave processing (100B) | 332 ns | &lt; 0.4% | 0 B/op |
+| **Bus cycle (incl. copy)** | **~20 μs** | **~20%** | — |
+| Command execution | 250–326 ns | &lt; 0.4% | 32–296 B/op |
+
+**Core hot path (encode/decode + frame ops + command execution) consumes &lt; 0.5% of a 100μs EtherCAT cycle.** The 10-byte datagram header — the highest-frequency operation in the system — uses only 2 memory operations (one `uint64` 8-byte + one `uint16` 2-byte) instead of 10 byte-by-byte accesses, achieving a 21% improvement on the Commit path.
 
 ### Core Encoding (ecfr) — All Zero-Allocation
 

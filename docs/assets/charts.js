@@ -1,12 +1,12 @@
-// assets/charts.js — ECharts visualizations for ecat refactoring report
+// assets/charts.js — ECharts visualizations for ecat refactoring report (light theme)
 (function() {
   var style = getComputedStyle(document.documentElement);
-  var accent = style.getPropertyValue('--accent').trim();
-  var accent2 = style.getPropertyValue('--accent2').trim();
-  var ink = style.getPropertyValue('--ink').trim();
-  var muted = style.getPropertyValue('--muted').trim();
-  var rule = style.getPropertyValue('--rule').trim();
-  var bg2 = style.getPropertyValue('--bg2').trim();
+  var accent = style.getPropertyValue('--accent').trim() || '#2563eb';
+  var accent2 = style.getPropertyValue('--accent2').trim() || '#059669';
+  var ink = style.getPropertyValue('--ink').trim() || '#1a1a2e';
+  var muted = style.getPropertyValue('--muted').trim() || '#6b7280';
+  var rule = style.getPropertyValue('--rule').trim() || '#e5e7eb';
+  var bg2 = style.getPropertyValue('--bg2').trim() || '#ffffff';
 
   // --- Chart 1: Coverage ---
   var covEl = document.getElementById('chart-coverage');
@@ -40,10 +40,10 @@
         type: 'bar',
         data: [
           { value: 27.2, itemStyle: { color: muted } },
-          { value: 74.4, itemStyle: { color: accent + '99' } },
-          { value: 84.8, itemStyle: { color: accent + 'bb' } },
-          { value: 86.9, itemStyle: { color: accent + 'cc' } },
-          { value: 89.2, itemStyle: { color: accent + 'dd' } },
+          { value: 74.4, itemStyle: { color: '#93c5fd' } },
+          { value: 84.8, itemStyle: { color: '#60a5fa' } },
+          { value: 86.9, itemStyle: { color: '#3b82f6' } },
+          { value: 89.2, itemStyle: { color: '#2563eb' } },
           { value: 90.3, itemStyle: { color: accent } },
           { value: 91.5, itemStyle: { color: accent2 } }
         ],
@@ -98,9 +98,9 @@
         data: [
           { value: 5.0, itemStyle: { color: accent2 } },
           { value: 3.3, itemStyle: { color: accent2 } },
-          { value: 0, itemStyle: { color: accent } },
-          { value: 0, itemStyle: { color: accent } },
-          { value: 0, itemStyle: { color: accent } }
+          { value: 0, itemStyle: { color: '#93c5fd' } },
+          { value: 0, itemStyle: { color: '#93c5fd' } },
+          { value: 0, itemStyle: { color: '#93c5fd' } }
         ],
         label: {
           show: true,
@@ -117,19 +117,20 @@
     window.addEventListener('resize', function() { chart2.resize(); });
   }
 
-  // Mermaid init
+  // Mermaid init — light/neutral theme
   if (typeof mermaid !== 'undefined') {
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'dark',
+      theme: 'neutral',
       securityLevel: 'loose',
       themeVariables: {
-        primaryColor: '#161b22',
-        primaryTextColor: '#e6edf3',
-        primaryBorderColor: '#30363d',
-        lineColor: '#58a6ff',
-        secondaryColor: '#161b22',
-        tertiaryColor: '#0d1117'
+        primaryColor: '#ffffff',
+        primaryTextColor: '#1a1a2e',
+        primaryBorderColor: '#e5e7eb',
+        lineColor: '#2563eb',
+        secondaryColor: '#f8fafc',
+        tertiaryColor: '#f5f6f8',
+        fontSize: '14px'
       }
     });
   }
