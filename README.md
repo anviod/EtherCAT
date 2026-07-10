@@ -1,4 +1,4 @@
-# ecat — EtherCAT Protocol Library for Go
+# EtherCAT —  Protocol Library for Go
 
 [![CI](https://github.com/anviod/EtherCAT/actions/workflows/ci.yml/badge.svg)](https://github.com/anviod/EtherCAT/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://go.dev/)

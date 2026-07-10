@@ -35,7 +35,7 @@ func NewALStatusControl() *ALStatusControl {
 	return sc
 }
 
-// IsECATWritable returns true, indicating the ECAT side can write to
+// IsECATWritable returns true, indicating the EtherCAT side can write to
 // the AL Control register.
 func (sc *ALStatusControl) IsECATWritable() bool {
 	return true
@@ -124,7 +124,7 @@ func (c *ALControl) Read(offs uint16, dp *uint8) bool {
 }
 
 // WriteInteract returns whether the AL Control register is writable
-// from the ECAT side.
+// from the EtherCAT side.
 func (c *ALControl) WriteInteract(offs uint16) bool {
 	return c.parent.IsECATWritable()
 }
@@ -214,7 +214,7 @@ func (s *ALStatus) Read(offs uint16, dp *uint8) bool {
 }
 
 // WriteInteract returns false: the AL Status register is read-only
-// from the ECAT side.
+// from the EtherCAT side.
 func (s *ALStatus) WriteInteract(offs uint16) bool {
 	return false
 }

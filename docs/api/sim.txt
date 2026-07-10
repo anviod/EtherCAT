@@ -46,7 +46,7 @@ func (c *ALControl) Read(offs uint16, dp *uint8) bool
 
 func (c *ALControl) WriteInteract(offs uint16) bool
     WriteInteract returns whether the AL Control register is writable from the
-    ECAT side.
+    EtherCAT side.
 
 type ALStatus struct {
 	// Has unexported fields.
@@ -68,7 +68,7 @@ func (s *ALStatus) Read(offs uint16, dp *uint8) bool
 
 func (s *ALStatus) WriteInteract(offs uint16) bool
     WriteInteract returns false: the AL Status register is read-only from the
-    ECAT side.
+    EtherCAT side.
 
 type ALStatusControl struct {
 	// Has unexported fields.
@@ -88,7 +88,7 @@ func (sc *ALStatusControl) InError() bool
     InError returns true if the device is in an error state.
 
 func (sc *ALStatusControl) IsECATWritable() bool
-    IsECATWritable returns true, indicating the ECAT side can write to the AL
+    IsECATWritable returns true, indicating the EtherCAT side can write to the AL
     Control register.
 
 func (sc *ALStatusControl) SetError(seterr bool)

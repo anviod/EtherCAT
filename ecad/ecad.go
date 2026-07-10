@@ -21,7 +21,7 @@ const (
 
 // ─── ESC Reset (0x0040-0x004F) ─────────────────────────────────────────────────
 
-const ESCResetECAT = 0x0040 // ESC reset register for ECAT unit
+const ESCResetECAT = 0x0040 // ESC reset register for EtherCAT unit
 
 // ─── Data Link Layer (0x0100-0x011F) ───────────────────────────────────────────
 
@@ -44,7 +44,7 @@ const PDIControl = 0x0140 // Process Data Interface Control register
 
 // ─── Interrupt / Event (0x0200-0x02FF) ─────────────────────────────────────────
 
-const ECATEventMask = 0x0200 // ECAT event mask register
+const ECATEventMask = 0x0200 // EtherCAT event mask register
 
 // ─── EEPROM Interface (0x0500-0x050F) ──────────────────────────────────────────
 

@@ -137,7 +137,7 @@ func PointFrameTo(d []byte) (Frame, error) {
 // Frame-length field is auto-updated. Uses cached byteLen (O(1)).
 func (f *Frame) Commit() ([]byte, error) {
 	if len(f.Datagrams) == 0 {
-		return nil, errors.New("ecat frame needs at least one datagram")
+		return nil, errors.New("EtherCAT frame needs at least one datagram")
 	}
 
 	clen := f.byteLen

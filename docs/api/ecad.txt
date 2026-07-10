@@ -64,8 +64,8 @@ const (
 )
     Sync Manager channel layout (each channel is 8 bytes):
 
-const ECATEventMask = 0x0200 // ECAT event mask register
-const ESCResetECAT = 0x0040 // ESC reset register for ECAT unit
+const ECATEventMask = 0x0200 // EtherCAT event mask register
+const ESCResetECAT = 0x0040 // ESC reset register for EtherCAT unit
 const FMMUBase = 0x0600 // Base address for FMMU configuration
 const PDIControl = 0x0140 // Process Data Interface Control register
 const (
