@@ -7,9 +7,9 @@ import (
 
 // Sentinel errors for hot-path use — avoids fmt.Errorf allocation overhead.
 var (
-	errHeaderBufferNil   = errors.New("header buffer is nil")
-	errHeaderTooShort    = errors.New("header buffer too short: need 2 bytes")
-	errNotEnoughForHdr   = errors.New("not enough bytes for header")
+	errHeaderBufferNil = errors.New("header buffer is nil")
+	errHeaderTooShort  = errors.New("header buffer too short: need 2 bytes")
+	errNotEnoughForHdr = errors.New("not enough bytes for header")
 )
 
 // ---------------------------------------------------------------------------
@@ -18,8 +18,9 @@ var (
 
 // Header represents the 2-byte EtherCAT frame header.
 // Bit layout:
-//   bits 0-10:  frame length (11 bits)
-//   bits 12-15: frame type (4 bits)
+//
+//	bits 0-10:  frame length (11 bits)
+//	bits 12-15: frame type (4 bits)
 type Header struct {
 	Word   uint16
 	buffer []byte

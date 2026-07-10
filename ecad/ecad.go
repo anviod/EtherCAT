@@ -3,12 +3,12 @@ package ecad
 // ─── ESC Information (0x0000-0x000F) ────────────────────────────────────────────
 
 const (
-	Type                = 0x0000 // ESC type identifier
-	Revision            = 0x0001 // ESC revision number
-	Build               = 0x0002 // ESC build number
-	FMMUsSupported      = 0x0004 // Number of supported FMMUs
-	RAMSize             = 0x0006 // RAM size in KB
-	PortDescriptor      = 0x0007 // Physical port descriptor
+	Type                 = 0x0000 // ESC type identifier
+	Revision             = 0x0001 // ESC revision number
+	Build                = 0x0002 // ESC build number
+	FMMUsSupported       = 0x0004 // Number of supported FMMUs
+	RAMSize              = 0x0006 // RAM size in KB
+	PortDescriptor       = 0x0007 // Physical port descriptor
 	ESCFeaturesSupported = 0x0008 // ESC feature flags
 )
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anviod/EtherCAT/ecfr"
+
 	"golang.org/x/net/ipv4"
 )
 

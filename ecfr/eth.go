@@ -32,8 +32,8 @@ func sliceToETHAddr(s []byte) ETHAddr {
 // ---------------------------------------------------------------------------
 
 const (
-	minFramelenWithFCS = 64
-	fcsLen             = 4
+	minFramelenWithFCS  = 64
+	fcsLen              = 4
 	minHeaderAndPayload = minFramelenWithFCS - fcsLen
 
 	// including FCS

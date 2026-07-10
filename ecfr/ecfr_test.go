@@ -11,10 +11,10 @@ import (
 
 func TestCommandTypeDoesReadDoesWrite(t *testing.T) {
 	testCases := []struct {
-		ct   CommandType
-		read bool
+		ct    CommandType
+		read  bool
 		write bool
-		name string
+		name  string
 	}{
 		{NOP, false, false, "NOP"},
 		{APRD, true, false, "APRD"},
@@ -111,7 +111,7 @@ func TestDatagramAddressIncrementSlaveAddr(t *testing.T) {
 
 func TestDatagramAddressFromCommand(t *testing.T) {
 	testCases := []struct {
-		ct CommandType
+		ct   CommandType
 		want DatagramAddressType
 	}{
 		{NOP, UninitializedDatagramAddressType},
@@ -412,7 +412,7 @@ func TestFrameNewDatagram(t *testing.T) {
 	}
 
 	totalLen := f.ByteLen()
-	if totalLen != 2 + (12+32) {
+	if totalLen != 2+(12+32) {
 		t.Errorf("ByteLen = %d, want %d", totalLen, 2+12+32)
 	}
 
