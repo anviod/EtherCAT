@@ -337,7 +337,7 @@ func (s *L2Slave) ProcessFrame(infr *ecfr.Frame) (ofr *ecfr.Frame) {
 				copy(dg.Data[:datalen], s.BackingMemory[physbase:physbase+datalen])
 			}
 			if writes {
-				copy(s.BackingMemory[physbase:physbase+uint16(datalen)], dg.Data[:datalen])
+				copy(s.BackingMemory[physbase:physbase+datalen], dg.Data[:datalen])
 			}
 			// WKC: always increment for non-register memory (no masking)
 			if reads && writes {

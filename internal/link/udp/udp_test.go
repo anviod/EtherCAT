@@ -292,5 +292,3 @@ func BenchmarkUDPFramerCycle(b *testing.B) {
 		}
 	}
 }
-
-

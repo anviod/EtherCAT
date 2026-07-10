@@ -65,17 +65,17 @@ func NewUDPFramer(iface *net.Interface, group net.IP, cycletime time.Duration) (
 	f.conn = ipv4.NewPacketConn(f.sock)
 
 	if err = f.conn.SetMulticastInterface(f.iface); err != nil {
-		f.sock.Close()
+		_ = f.sock.Close()
 		return nil, err
 	}
 
 	if err = f.conn.JoinGroup(iface, &net.UDPAddr{IP: group}); err != nil {
-		f.sock.Close()
+		_ = f.sock.Close()
 		return nil, err
 	}
 
 	if err = f.conn.SetMulticastLoopback(false); err != nil {
-		f.sock.Close()
+		_ = f.sock.Close()
 		return nil, err
 	}
 
