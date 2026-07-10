@@ -1,12 +1,15 @@
-// assets/charts.js — ECharts visualizations for ecat refactoring report (light theme)
+// assets/charts.js — ECharts visualizations for EtherCAT refactoring report (EdgeX gold theme)
 (function() {
   var style = getComputedStyle(document.documentElement);
-  var accent = style.getPropertyValue('--accent').trim() || '#2563eb';
-  var accent2 = style.getPropertyValue('--accent2').trim() || '#059669';
-  var ink = style.getPropertyValue('--ink').trim() || '#1a1a2e';
-  var muted = style.getPropertyValue('--muted').trim() || '#6b7280';
-  var rule = style.getPropertyValue('--rule').trim() || '#e5e7eb';
-  var bg2 = style.getPropertyValue('--bg2').trim() || '#ffffff';
+  var gold = style.getPropertyValue('--gold').trim() || '#c5a059';
+  var goldDeep = style.getPropertyValue('--gold-deep').trim() || '#b38f43';
+  var goldLight = style.getPropertyValue('--gold-light').trim() || '#dfc38a';
+  var ink = style.getPropertyValue('--ink').trim() || '#343a40';
+  var muted = style.getPropertyValue('--muted').trim() || '#6c757d';
+  var rule = style.getPropertyValue('--line').trim() || '#e9ecef';
+
+  // Gold palette: light to deep
+  var goldPalette = ['#dfc38a', '#cfaa6a', '#c5a059', '#b38f43', '#9c7a35', '#7a5e28'];
 
   // --- Chart 1: Coverage ---
   var covEl = document.getElementById('chart-coverage');
@@ -40,12 +43,12 @@
         type: 'bar',
         data: [
           { value: 27.2, itemStyle: { color: muted } },
-          { value: 74.4, itemStyle: { color: '#93c5fd' } },
-          { value: 84.8, itemStyle: { color: '#60a5fa' } },
-          { value: 86.9, itemStyle: { color: '#3b82f6' } },
-          { value: 89.2, itemStyle: { color: '#2563eb' } },
-          { value: 90.3, itemStyle: { color: accent } },
-          { value: 91.5, itemStyle: { color: accent2 } }
+          { value: 74.4, itemStyle: { color: goldPalette[0] } },
+          { value: 84.8, itemStyle: { color: goldPalette[1] } },
+          { value: 86.9, itemStyle: { color: goldPalette[2] } },
+          { value: 89.2, itemStyle: { color: goldPalette[3] } },
+          { value: 90.3, itemStyle: { color: goldPalette[4] } },
+          { value: 91.5, itemStyle: { color: goldPalette[5] } }
         ],
         label: {
           show: true,
@@ -96,11 +99,11 @@
       series: [{
         type: 'bar',
         data: [
-          { value: 5.0, itemStyle: { color: accent2 } },
-          { value: 3.3, itemStyle: { color: accent2 } },
-          { value: 0, itemStyle: { color: '#93c5fd' } },
-          { value: 0, itemStyle: { color: '#93c5fd' } },
-          { value: 0, itemStyle: { color: '#93c5fd' } }
+          { value: 5.0, itemStyle: { color: goldDeep } },
+          { value: 3.3, itemStyle: { color: goldDeep } },
+          { value: 0, itemStyle: { color: goldPalette[0] } },
+          { value: 0, itemStyle: { color: goldPalette[0] } },
+          { value: 0, itemStyle: { color: goldPalette[0] } }
         ],
         label: {
           show: true,
@@ -117,7 +120,7 @@
     window.addEventListener('resize', function() { chart2.resize(); });
   }
 
-  // Mermaid init — light/neutral theme
+  // Mermaid init — neutral theme with gold accent
   if (typeof mermaid !== 'undefined') {
     mermaid.initialize({
       startOnLoad: true,
@@ -125,11 +128,11 @@
       securityLevel: 'loose',
       themeVariables: {
         primaryColor: '#ffffff',
-        primaryTextColor: '#1a1a2e',
-        primaryBorderColor: '#e5e7eb',
-        lineColor: '#2563eb',
-        secondaryColor: '#f8fafc',
-        tertiaryColor: '#f5f6f8',
+        primaryTextColor: '#343a40',
+        primaryBorderColor: '#e9ecef',
+        lineColor: '#b38f43',
+        secondaryColor: '#f8f9fa',
+        tertiaryColor: '#f8f9fa',
         fontSize: '14px'
       }
     });

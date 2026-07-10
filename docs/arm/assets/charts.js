@@ -1,11 +1,11 @@
 (function() {
   var style = getComputedStyle(document.documentElement);
-  var accent = style.getPropertyValue('--accent').trim();
-  var accent2 = style.getPropertyValue('--accent2').trim();
-  var ink = style.getPropertyValue('--ink').trim();
-  var muted = style.getPropertyValue('--muted').trim();
-  var rule = style.getPropertyValue('--rule').trim();
-  var bg2 = style.getPropertyValue('--bg2').trim();
+  var gold = style.getPropertyValue('--gold').trim() || '#c5a059';
+  var goldDeep = style.getPropertyValue('--gold-deep').trim() || '#b38f43';
+  var goldLight = style.getPropertyValue('--gold-light').trim() || '#dfc38a';
+  var ink = style.getPropertyValue('--ink').trim() || '#343a40';
+  var muted = style.getPropertyValue('--muted').trim() || '#6c757d';
+  var rule = style.getPropertyValue('--line').trim() || '#e9ecef';
 
   // --- Chart 1: FrameOverlay series ARM64 comparison ---
   var chart1 = echarts.init(document.getElementById('chart-overlay-compare'), null, { renderer: 'svg' });
@@ -39,7 +39,7 @@
         return {
           value: d.ns,
           itemStyle: {
-            color: d.alloc === 0 ? accent : accent + '60'
+            color: d.alloc === 0 ? goldDeep : gold + '60'
           }
         };
       }),
@@ -100,14 +100,14 @@
         name: 'x86 (i5-13500H)',
         type: 'bar',
         data: fullData.map(function(d) { return d.x86; }),
-        itemStyle: { color: accent2 },
+        itemStyle: { color: goldLight },
         barWidth: '40%'
       },
       {
         name: 'ARM64 (Cortex-A55)',
         type: 'bar',
         data: fullData.map(function(d) { return d.arm; }),
-        itemStyle: { color: accent },
+        itemStyle: { color: goldDeep },
         barWidth: '40%'
       }
     ],

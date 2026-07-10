@@ -4,388 +4,293 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EtherCAT Go 库重构报告</title>
+<title>EtherCAT Go 库 — 重构报告</title>
 <style>
-@font-face {
-  font-family: 'Inter';
-  src: url('./_shared/fonts/Inter-Regular.ttf') format('truetype');
-  font-weight: 400;
-}
-@font-face {
-  font-family: 'Inter';
-  src: url('./_shared/fonts/Inter-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-}
-@font-face {
-  font-family: 'Inter';
-  src: url('./_shared/fonts/Inter-Bold.ttf') format('truetype');
-  font-weight: 700;
-}
+/* ==========================================================================
+   EtherCAT Docs — 明亮工业轻奢版（EdgeX 金标风格）
+   ========================================================================== */
 @font-face {
   font-family: 'JetBrains Mono';
   src: url('./_shared/fonts/JetBrainsMono-Regular.ttf') format('truetype');
   font-weight: 400;
 }
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./_shared/fonts/JetBrainsMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
 
 :root {
-  --bg: #f5f6f8;
-  --bg2: #ffffff;
-  --ink: #1a1a2e;
-  --muted: #6b7280;
-  --rule: #e5e7eb;
-  --accent: #2563eb;
-  --accent2: #059669;
+  --bg: #f8f9fa;
+  --panel: #ffffff;
+  --line: #e9ecef;
+  --line-gold: rgba(197, 160, 89, 0.22);
+  --ink: #343a40;
+  --text: #495057;
+  --muted: #6c757d;
+  --gold: #c5a059;
+  --gold-deep: #b38f43;
+  --gold-light: #dfc38a;
+  --gold-bg: rgba(197, 160, 89, 0.08);
+  --gold-bg-strong: rgba(197, 160, 89, 0.10);
+  --shadow: 0 2px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+  --radius: 6px;
+  --header-glass: rgba(248, 249, 250, 0.92);
   --err: #dc2626;
   --warn: #d97706;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 16px;
-  line-height: 1.7;
-  color: var(--ink);
+  line-height: 1.75;
+  color: var(--text);
   background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
+a { color: var(--gold-deep); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--gold); }
 
-/* ── Top Nav ────────────────────────────────────────────── */
-.top-nav {
-  background: var(--bg2);
-  border-bottom: 1px solid var(--rule);
-  padding: 0.75rem 0;
-  font-size: 0.85rem;
-  font-family: 'JetBrains Mono', monospace;
-}
-.top-nav .container {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.top-nav a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.15s;
-}
-.top-nav a:hover { color: var(--ink); }
-.top-nav .sep { color: var(--muted); }
+code, pre { font-family: 'JetBrains Mono', 'Consolas', monospace; }
 
-/* Header */
-.hero {
-  background: linear-gradient(135deg, #eef2ff 0%, #dbeafe 50%, #f0fdf4 100%);
-  border-bottom: 1px solid var(--rule);
-  padding: 4rem 0 3rem;
+.shell { width: min(100% - 48px, 960px); margin: 0 auto; }
+
+/* ── Nav ── */
+.site-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-glass);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.site-header__topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; padding: 16px 0;
+}
+.site-brand {
+  font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.site-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-nav a {
+  padding: 8px 14px; border-radius: 4px;
+  color: var(--text); font-weight: 600; font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+.site-nav a:hover { background: var(--gold-bg); color: var(--gold-deep); }
+.site-nav .active { color: var(--gold-deep); background: var(--gold-bg); }
+
+/* ── Hero ── */
+.hero-section {
+  border-bottom: 1px solid var(--line-gold);
+  background: radial-gradient(ellipse at 50% 0%, #ffffff 0%, var(--bg) 100%);
+  padding: 56px 0 48px;
   text-align: center;
 }
-.hero h1 {
-  font-size: 2.4rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 0.5rem;
+.hero-section .eyebrow {
+  display: inline-block; margin-bottom: 12px; padding: 4px 12px;
+  border-radius: 4px; background: var(--gold-bg-strong);
+  border: 1px solid var(--line-gold);
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold-deep);
+}
+.hero-section h1 {
+  font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800;
+  line-height: 1.15; color: var(--ink); margin-bottom: 12px;
   letter-spacing: -0.02em;
 }
-.hero .subtitle {
-  font-size: 1.1rem;
-  color: var(--muted);
-  font-weight: 400;
+.hero-section .subtitle {
+  font-size: 1.05rem; color: var(--muted); margin-bottom: 0;
 }
-.hero .meta {
-  margin-top: 1.5rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+.hero-section .meta {
+  margin-top: 20px; font-size: 0.8rem; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
 }
-.hero .meta span {
-  margin: 0 0.75rem;
-}
+.hero-section .meta span { margin: 0 12px; }
 
-/* Content */
-main { padding: 3rem 0; }
+/* ── Content ── */
+.page-main { padding: 0 0 80px; }
+
+.markdown-body {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: clamp(32px, 4vw, 56px); margin-top: 32px;
+}
 
 h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 3rem 0 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--rule);
-  letter-spacing: -0.01em;
+  font-size: 1.6rem; font-weight: 700; color: var(--ink);
+  margin: 2.8em 0 0.8em; padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--line);
 }
 h2:first-child { margin-top: 0; }
 
 h3 {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--accent);
-  margin: 2rem 0 0.75rem;
+  font-size: 1.15rem; font-weight: 600; color: var(--gold-deep);
+  margin: 2em 0 0.6em;
 }
 
-h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 1.5rem 0 0.5rem;
-}
+h4 { font-size: 1rem; font-weight: 600; color: var(--ink); margin: 1.5em 0 0.5em; }
 
 p { margin: 0.75rem 0; }
 
-strong { color: var(--ink); }
-
 .mark-key {
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
+  background: none; color: var(--gold-deep); font-weight: 600;
 }
 
-/* Stats grid */
+/* ── Stats / Metric ── */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin: 1.5rem 0;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1rem; margin: 1.5rem 0;
 }
 .stat-card {
-  background: var(--bg2);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 1.25rem;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.25rem;
+  text-align: center; box-shadow: var(--shadow);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
+.stat-card:hover { border-color: var(--line-gold); box-shadow: 0 8px 24px rgba(197,160,89,0.10); }
 .stat-card .stat-num {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--accent);
+  font-size: 1.8rem; font-weight: 800; color: var(--ink);
   line-height: 1.2;
 }
-.stat-card .stat-num.green { color: var(--accent2); }
 .stat-card .stat-label {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-top: 0.3rem;
+  font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem;
 }
 
-/* Tables */
+.perf-banner {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1rem; margin: 1.5rem 0;
+}
+.perf-item {
+  background: var(--panel); border: 1px solid var(--line-gold);
+  border-radius: var(--radius); padding: 1.25rem;
+  text-align: center; box-shadow: var(--shadow);
+}
+.perf-item .perf-value {
+  font-size: 1.7rem; font-weight: 800; color: var(--gold-deep);
+  line-height: 1.2;
+}
+.perf-item .perf-desc {
+  font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem;
+}
+
+/* ── Tables ── */
 .table-wrap {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 600px;
-  margin: 1rem 0;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
+  overflow-x: auto; overflow-y: auto; max-height: 600px;
+  margin: 1.2rem 0;
 }
 table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-  min-width: 600px;
+  width: 100%; border-collapse: collapse; font-size: 0.88rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 thead th {
-  background: #f8fafc;
-  color: var(--ink);
-  font-weight: 600;
-  text-align: left;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 2px solid var(--rule);
-  position: sticky;
-  top: 0;
+  background: #f8f9fa; color: var(--gold-deep); font-weight: 600;
+  text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--line-gold);
+  position: sticky; top: 0;
 }
 tbody td {
-  padding: 0.5rem 0.8rem;
-  border-bottom: 1px solid var(--rule);
-  color: var(--muted);
+  padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--text);
 }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: #f8fafc; color: var(--ink); }
+tbody tr:nth-child(even) td { background: rgba(248,249,250,0.6); }
+tbody tr:hover td { background: var(--gold-bg); }
 
-/* Code */
+/* ── Code ── */
 pre {
-  background: #f1f5f9;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 1rem 1.2rem;
-  overflow-x: auto;
-  margin: 1rem 0;
-  font-size: 0.82rem;
+  background: #f1f3f5; border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px;
+  overflow-x: auto; margin: 1rem 0; font-size: 0.82rem;
 }
-code {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.82rem;
-}
-pre code {
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: #1e293b;
-}
+pre code { font-size: 0.82rem; line-height: 1.55; color: var(--ink); background: transparent; padding: 0; }
 p code {
-  background: #f1f5f9;
-  padding: 0.1em 0.35em;
-  border-radius: 3px;
-  border: 1px solid var(--rule);
-  color: var(--accent);
+  background: var(--gold-bg); padding: 0.15em 0.4em;
+  border-radius: 3px; color: var(--gold-deep);
 }
 
-/* Callout */
+/* ── Callout ── */
 .callout {
-  border-left: 4px solid var(--accent);
-  background: #eff6ff;
-  padding: 0.8rem 1.2rem;
-  margin: 1rem 0;
-  border-radius: 0 4px 4px 0;
+  border-left: 3px solid var(--gold); background: var(--panel);
+  padding: 14px 18px; margin: 1.2rem 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-top: 1px solid var(--line); border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   font-size: 0.9rem;
 }
-.callout.warn {
-  border-left-color: var(--warn);
-  background: #fffbeb;
+.callout-title { font-weight: 600; color: var(--gold-deep); margin-bottom: 4px; }
+.callout.arm {
+  border-left-color: var(--gold-deep);
+  background: linear-gradient(135deg, #fff 0%, rgba(197,160,89,0.04) 100%);
 }
-.callout.err {
-  border-left-color: var(--err);
-  background: #fef2f2;
-}
-.callout-title {
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 0.3rem;
-}
-.callout.warn .callout-title { color: var(--warn); }
-.callout.err .callout-title { color: var(--err); }
+.callout.arm .callout-title { color: var(--gold-deep); }
 
-/* Architecture diagram */
-.diagram {
-  margin: 1.5rem 0;
-  text-align: center;
-}
-.diagram figcaption {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-top: 0.5rem;
-}
+/* ── Diagram ── */
+.diagram { margin: 1.5rem 0; text-align: center; }
+.diagram figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
 
-/* Chart */
-.chart-figure {
-  margin: 2rem 0;
-}
-.chart-figure figcaption {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink);
-  margin-bottom: 0.75rem;
-}
+/* ── Chart ── */
+.chart-figure { margin: 2rem 0; }
+.chart-figure figcaption { font-size: 0.9rem; font-weight: 600; color: var(--ink); margin-bottom: 0.75rem; }
 
-/* Footer */
+/* ── Footer ── */
 footer {
-  border-top: 1px solid var(--rule);
-  padding: 2rem 0;
-  margin-top: 3rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+  border-top: 1px solid var(--line); padding: 2rem 0; margin-top: 3rem;
+  font-size: 0.85rem; color: var(--muted);
 }
-footer .sources ol {
-  padding-left: 1.2rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-footer .sources li {
-  margin-bottom: 0.5rem;
-  overflow-wrap: break-word;
-  word-break: break-all;
-}
-footer .sources .src-title {
-  color: var(--ink);
-  word-break: normal;
-}
-footer .sources .src-url {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.82rem;
-  color: var(--accent);
-  word-break: break-all;
-}
-footer .sources a {
-  word-break: break-all;
-}
-
-/* Inline citations */
-sup a {
-  color: var(--accent);
-  text-decoration: none;
-  font-size: 0.75em;
-  font-weight: 600;
-}
+footer .sources ol { padding-left: 1.2rem; font-size: 0.85rem; color: var(--muted); }
+footer .sources li { margin-bottom: 0.5rem; overflow-wrap: break-word; word-break: break-all; }
+footer .sources .src-title { color: var(--ink); word-break: normal; }
+footer .sources .src-url { display: block; margin-top: 0.15rem; font-size: 0.82rem; color: var(--gold-deep); word-break: break-all; }
+footer .sources a { word-break: break-all; }
+sup a { color: var(--gold-deep); text-decoration: none; font-size: 0.75em; font-weight: 600; }
 sup a:hover { text-decoration: underline; }
 
-/* Performance summary banner */
-.perf-banner {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-.perf-banner .perf-item {
-  background: var(--bg2);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 1.25rem;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-.perf-banner .perf-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  line-height: 1.2;
-}
-.perf-banner .perf-desc {
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-top: 0.3rem;
-}
-
-/* Responsive */
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .container { padding: 0 1rem; }
-  .hero { padding: 2.5rem 0 2rem; }
-  .hero h1 { font-size: 1.6rem; }
+  .shell { width: min(100% - 24px, 100%); }
+  .hero-section { padding: 36px 0 32px; }
+  .hero-section h1 { font-size: 1.5rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .perf-banner { grid-template-columns: 1fr; }
+  .markdown-body { padding: 24px; border-radius: 4px; }
   body { font-size: 15px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ════════════════ TOP NAV ════════════════ -->
-<nav class="top-nav">
-  <div class="container">
-    <span style="color:var(--ink);font-weight:700">EtherCAT 主页</span>
-    <span class="sep">|</span>
-    <a href="api/index.html">API 文档</a>
-    <span class="sep">|</span>
-    <a href="arm/arm-optimization-report.html">ARM 优化报告</a>
-  </div>
-</nav>
-
-<!-- ════════════════ HERO ════════════════ -->
-<header class="hero">
-  <div class="container">
-    <h1>EtherCAT Go 库重构报告</h1>
-    <p class="subtitle">从 GOPATH 时代到现代 Go 标准 — 完全重构、性能优化、100% 测试覆盖</p>
-    <p class="meta">
-      <span>版本 2.1</span>
-      <span>2026-07-10</span>
-      <span>Go 1.21+</span>
-    </p>
+<!-- ════════════════ NAV ════════════════ -->
+<header class="site-header">
+  <div class="shell site-header__topbar">
+    <span class="site-brand">EtherCAT Go</span>
+    <nav class="site-nav">
+      <a href="index.html" class="active">主页</a>
+      <a href="api/index.html">API 文档</a>
+      <a href="arm/arm-optimization-report.html">ARM 优化报告</a>
+    </nav>
   </div>
 </header>
 
+<!-- ════════════════ HERO ════════════════ -->
+<section class="hero-section">
+  <div class="shell">
+    <span class="eyebrow">Refactoring Report</span>
+    <h1>EtherCAT Go 库重构报告</h1>
+    <p class="subtitle">从 GOPATH 时代到现代 Go 标准 — 完全重构、性能优化、100% 测试覆盖</p>
+    <p class="meta">
+      <span>版本 2.1</span> <span>2026-07-10</span> <span>Go 1.21+</span>
+    </p>
+  </div>
+</section>
+
 <!-- ════════════════ BODY ════════════════ -->
-<main class="container">
+<main class="page-main shell">
+<div class="markdown-body">
 
 <!-- ─── 概览 ─── -->
 <h2>1. 项目概览</h2>
@@ -402,7 +307,7 @@ sup a:hover { text-decoration: underline; }
     <div class="stat-label">Go 包</div>
   </div>
   <div class="stat-card">
-    <div class="stat-num green">225+</div>
+    <div class="stat-num">225+</div>
     <div class="stat-label">测试用例</div>
   </div>
   <div class="stat-card">
@@ -410,12 +315,11 @@ sup a:hover { text-decoration: underline; }
     <div class="stat-label">性能基准</div>
   </div>
   <div class="stat-card">
-    <div class="stat-num green">6</div>
+    <div class="stat-num">6</div>
     <div class="stat-label">修复的 Bug</div>
   </div>
 </div>
 
-<!-- ─── 性能摘要 ─── -->
 <h3>1.1 端到端微秒级性能</h3>
 
 <div class="perf-banner">
@@ -445,6 +349,13 @@ sup a:hover { text-decoration: underline; }
   <mark class="key">修复全部已知 Bug</mark>，保障单元测试覆盖核心路径，提供性能测试和压力测试，输出完整文档。
 </div>
 
+<div class="callout arm">
+  <div class="callout-title">ARM64 专项优化</div>
+  完整的 ARM64 (Cortex-A55) 性能分析与优化报告已发布。通过 <code>FrameOverlayPool</code> 零分配策略，
+  ARM64 帧解码加速 <strong>18.9 倍</strong>（498.5 → 26.34 ns/op）。
+  <a href="arm/arm-optimization-report.html">→ 查看 ARM 优化专项报告</a>
+</div>
+
 <!-- ─── 架构分析 ─── -->
 <h2>2. 架构分析</h2>
 
@@ -463,10 +374,10 @@ sup a:hover { text-decoration: underline; }
       E --> G
       C --> F
       H[eni<br/>ESI 解析] 
-      style B fill:#ffffff,stroke:#2563eb
-      style C fill:#ffffff,stroke:#2563eb
-      style E fill:#ffffff,stroke:#059669
-      style H fill:#ffffff,stroke:#6b7280
+      style B fill:#fff,stroke:#b38f43
+      style C fill:#fff,stroke:#b38f43
+      style E fill:#fff,stroke:#c5a059
+      style H fill:#fff,stroke:#6c757d
   </pre>
   <figcaption>图 1: 包依赖关系图 — 箭头表示 import 方向</figcaption>
 </figure>
@@ -557,43 +468,37 @@ sup a:hover { text-decoration: underline; }
   </thead>
   <tbody>
     <tr>
-      <td>1</td>
-      <td><code>ecee</code></td>
+      <td>1</td><td><code>ecee</code></td>
       <td><span style="color:var(--err)">严重</span></td>
       <td><code>waitForIdle</code> 中 timeout 参数被忽略、超时分支为空，导致 <strong>无限循环</strong></td>
       <td>使用 <code>time.After</code> + <code>select</code> 实现真正的超时机制，超时后返回 "EEPROM timeout" 错误</td>
     </tr>
     <tr>
-      <td>2</td>
-      <td><code>ecfr/eth</code></td>
+      <td>2</td><td><code>ecfr/eth</code></td>
       <td><span style="color:var(--err)">严重</span></td>
       <td><code>WriteDown()</code> 中 Type 字段两次写入同一位置 <code>pos</code>，导致 EtherType 高字节被覆盖</td>
       <td>正确写入高字节到 <code>pos</code>、低字节到 <code>pos+1</code></td>
     </tr>
     <tr>
-      <td>3</td>
-      <td><code>internal/link/udp</code></td>
+      <td>3</td><td><code>internal/link/udp</code></td>
       <td><span style="color:var(--err)">严重</span></td>
       <td><code>Close()</code> 递归调用自身 <code>f.Close()</code> 而非 <code>f.sock.Close()</code>，导致 <strong>栈溢出</strong></td>
       <td>改为调用 <code>f.sock.Close()</code> 和 <code>f.conn.Close()</code></td>
     </tr>
     <tr>
-      <td>4</td>
-      <td><code>ecfr/frame</code></td>
+      <td>4</td><td><code>ecfr/frame</code></td>
       <td><span style="color:var(--warn)">中等</span></td>
       <td><code>NewDatagram</code> 中 <code>panic("datalen too high")</code> 导致非预期崩溃</td>
       <td>改为返回有意义的 <code>error</code></td>
     </tr>
     <tr>
-      <td>5</td>
-      <td><code>internal/sim/l2eeprom</code></td>
+      <td>5</td><td><code>internal/sim/l2eeprom</code></td>
       <td><span style="color:var(--warn)">中等</span></td>
       <td><code>shadow[7] &lt;&lt; 32</code> 在 uint8 类型上移位溢出为 0</td>
-      <td>使用正确的 uint32 类型转换：<code>uint32(shadow[7]) | uint32(shadow[6])&lt;&lt;8 | ...</code></td>
+      <td>使用正确的 uint32 类型转换</td>
     </tr>
     <tr>
-      <td>6</td>
-      <td><code>ecfr/datagram</code></td>
+      <td>6</td><td><code>ecfr/datagram</code></td>
       <td><span style="color:var(--warn)">中等</span></td>
       <td><code>Commit()</code> 静默忽略 <code>Header.Commit()</code> 的错误</td>
       <td>检查并传播所有子组件错误</td>
@@ -760,13 +665,6 @@ func (f *UDPFramer) Close() error {
   Commit 路径提升 21%。
 </div>
 
-<div class="callout" style="background:#f0fdf4;border-left-color:#059669;margin-top:1.5rem;">
-  <div class="callout-title" style="color:#059669;">ARM64 专项优化</div>
-  完整的 ARM64 (Cortex-A55) 性能分析与优化报告已发布。通过 <code>FrameOverlayPool</code> 零分配策略，
-  ARM64 帧解码加速 <strong>18.9 倍</strong>（498.5 → 26.34 ns/op）。
-  <a href="arm/arm-optimization-report.html" style="color:var(--accent);font-weight:700;">→ 查看 ARM 优化专项报告</a>
-</div>
-
 <h3>5.2 编解码性能</h3>
 
 <div class="table-wrap">
@@ -805,10 +703,10 @@ func (f *UDPFramer) Close() error {
     <tr><th>测试场景</th><th>并发数</th><th>操作数</th><th>结果</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>TestMultiplexer_Concurrent</code></td><td>10 goroutines</td><td>100 次/通道</td><td><span style="color:var(--accent2)">PASS</span></td></tr>
-    <tr><td><code>BenchmarkMultiplexerCycle</code></td><td>16 核满负载</td><td>自动迭代</td><td><span style="color:var(--accent2)">无竞态</span></td></tr>
-    <tr><td><code>BenchmarkL2BusCycle</code></td><td>多从站</td><td>自动迭代</td><td><span style="color:var(--accent2)">无竞态</span></td></tr>
-    <tr><td><code>BenchmarkCommandFramerCycle</code></td><td>多帧</td><td>自动迭代</td><td><span style="color:var(--accent2)">无竞态</span></td></tr>
+    <tr><td><code>TestMultiplexer_Concurrent</code></td><td>10 goroutines</td><td>100 次/通道</td><td><span style="color:#2e7d32">PASS</span></td></tr>
+    <tr><td><code>BenchmarkMultiplexerCycle</code></td><td>16 核满负载</td><td>自动迭代</td><td><span style="color:#2e7d32">无竞态</span></td></tr>
+    <tr><td><code>BenchmarkL2BusCycle</code></td><td>多从站</td><td>自动迭代</td><td><span style="color:#2e7d32">无竞态</span></td></tr>
+    <tr><td><code>BenchmarkCommandFramerCycle</code></td><td>多帧</td><td>自动迭代</td><td><span style="color:#2e7d32">无竞态</span></td></tr>
   </tbody>
 </table>
 </div>
@@ -1048,10 +946,13 @@ make bench-stress</code></pre>
   仅保留两个 <code>golang.org/x</code> 官方扩展库。
 </div>
 
-<!-- ─── 脚注 ─── -->
+</div><!-- /.markdown-body -->
+</main>
+
+<!-- ════════════════ FOOTER ════════════════ -->
 <footer>
-  <div class="container">
-    <h2>Sources</h2>
+  <div class="shell">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem;border:none;padding:0;">Sources</h2>
     <div class="sources">
       <ol>
         <li id="cite-1">
@@ -1071,8 +972,6 @@ make bench-stress</code></pre>
     <p style="margin-top:1.5rem;text-align:center">ecat v2.1 &mdash; MIT License &mdash; 2026-07-10</p>
   </div>
 </footer>
-
-</main>
 
 <script src="./_shared/js/mermaid.min.js"></script>
 <script src="./_shared/js/echarts.min.js"></script>

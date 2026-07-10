@@ -2,167 +2,298 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ecat API Documentation / API 文档</title>
-    <style>
-        :root {
-            --bg: #f5f6f8;
-            --bg2: #ffffff;
-            --ink: #1a1a2e;
-            --muted: #6b7280;
-            --rule: #e5e7eb;
-            --accent: #2563eb;
-            --accent2: #059669;
-            --code-bg: #f1f5f9;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--ink);
-            line-height: 1.7;
-            padding: 2rem;
-            max-width: 960px;
-            margin: 0 auto;
-        }
-        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-        h1 .en { color: var(--accent); }
-        h1 .zh { color: var(--accent2); }
-        h2 {
-            font-size: 1.3rem;
-            margin-top: 2rem;
-            margin-bottom: 0.8rem;
-            border-bottom: 1px solid var(--rule);
-            padding-bottom: 0.3rem;
-        }
-        h3 { font-size: 1.1rem; margin-top: 1.5rem; color: var(--accent); }
-        p { margin-bottom: 0.8rem; color: var(--muted); }
-        p strong { color: var(--ink); }
-        .pkg-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        .pkg-card {
-            background: var(--bg2);
-            border: 1px solid var(--rule);
-            border-radius: 8px;
-            padding: 1rem 1.2rem;
-            transition: border-color 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        .pkg-card:hover { border-color: var(--accent); }
-        .pkg-card .name {
-            font-family: "SF Mono", Consolas, monospace;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--accent);
-        }
-        .pkg-card .desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.3rem; }
-        .pkg-card .internal { font-size: 0.75rem; color: var(--accent2); margin-top: 0.2rem; }
-        code {
-            font-family: "SF Mono", Consolas, monospace;
-            background: var(--code-bg);
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
-            font-size: 0.9em;
-            color: var(--accent);
-        }
-        a { color: var(--accent); text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .lang-tag {
-            display: inline-block;
-            font-size: 0.75rem;
-            padding: 0.1rem 0.5rem;
-            border-radius: 3px;
-            margin-left: 0.5rem;
-            vertical-align: middle;
-        }
-        .lang-en { background: rgba(37,99,235,0.1); color: var(--accent); }
-        .lang-zh { background: rgba(5,150,105,0.1); color: var(--accent2); }
-        footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.85rem; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ecat API Documentation / API 文档</title>
+<style>
+/* ==========================================================================
+   EtherCAT Docs — 明亮工业轻奢版（EdgeX 金标风格）
+   ========================================================================== */
+:root {
+  --bg: #f8f9fa;
+  --panel: #ffffff;
+  --line: #e9ecef;
+  --line-gold: rgba(197, 160, 89, 0.22);
+  --ink: #343a40;
+  --text: #495057;
+  --muted: #6c757d;
+  --gold: #c5a059;
+  --gold-deep: #b38f43;
+  --gold-light: #dfc38a;
+  --gold-bg: rgba(197, 160, 89, 0.08);
+  --gold-bg-strong: rgba(197, 160, 89, 0.10);
+  --shadow: 0 2px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+  --radius: 6px;
+  --header-glass: rgba(248, 249, 250, 0.92);
+  --code-bg: #f1f3f5;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--gold-deep); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--gold); }
+
+code, pre { font-family: 'JetBrains Mono', 'Consolas', monospace; }
+
+.shell { width: min(100% - 48px, 960px); margin: 0 auto; }
+
+/* ── Nav ── */
+.site-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-glass);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.site-header__topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; padding: 16px 0;
+}
+.site-brand {
+  font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.site-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-nav a {
+  padding: 8px 14px; border-radius: 4px;
+  color: var(--text); font-weight: 600; font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+.site-nav a:hover { background: var(--gold-bg); color: var(--gold-deep); }
+.site-nav .active { color: var(--gold-deep); background: var(--gold-bg); }
+
+/* ── Hero ── */
+.hero-section {
+  border-bottom: 1px solid var(--line-gold);
+  background: radial-gradient(ellipse at 50% 0%, #ffffff 0%, var(--bg) 100%);
+  padding: 56px 0 48px;
+  text-align: center;
+}
+.hero-section .eyebrow {
+  display: inline-block; margin-bottom: 12px; padding: 4px 12px;
+  border-radius: 4px; background: var(--gold-bg-strong);
+  border: 1px solid var(--line-gold);
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold-deep);
+}
+.hero-section h1 {
+  font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800;
+  line-height: 1.15; color: var(--ink); margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+.hero-section .subtitle {
+  font-size: 1.05rem; color: var(--muted); margin-bottom: 0;
+}
+.hero-section .meta {
+  margin-top: 20px; font-size: 0.8rem; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Content ── */
+.page-main { padding: 0 0 80px; }
+
+.markdown-body {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: clamp(32px, 4vw, 56px); margin-top: 32px;
+}
+
+h2 {
+  font-size: 1.6rem; font-weight: 700; color: var(--ink);
+  margin: 2.8em 0 0.8em; padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--line);
+}
+h2:first-child { margin-top: 0; }
+
+h3 {
+  font-size: 1.15rem; font-weight: 600; color: var(--gold-deep);
+  margin: 2em 0 0.6em;
+}
+
+p { margin: 0.75rem 0; }
+
+/* ── Package Cards ── */
+.pkg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem; margin: 1rem 0 1.5rem;
+}
+.pkg-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.2rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.pkg-card:hover { border-color: var(--line-gold); box-shadow: 0 8px 24px rgba(197,160,89,0.10); }
+.pkg-card .name {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1rem; font-weight: 600; color: var(--gold-deep);
+}
+.pkg-card .desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.3rem; }
+.pkg-card .internal { font-size: 0.75rem; color: var(--gold); margin-top: 0.2rem; }
+
+/* ── Code ── */
+pre {
+  background: #f1f3f5; border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px;
+  overflow-x: auto; margin: 1rem 0; font-size: 0.82rem;
+}
+pre code { font-size: 0.82rem; line-height: 1.55; color: var(--ink); background: transparent; padding: 0; }
+p code {
+  background: var(--gold-bg); padding: 0.15em 0.4em;
+  border-radius: 3px; color: var(--gold-deep);
+}
+
+/* ── Lang tags ── */
+.lang-tag {
+  display: inline-block; font-size: 0.75rem;
+  padding: 0.1rem 0.5rem; border-radius: 3px;
+  margin-left: 0.5rem; vertical-align: middle;
+}
+.lang-en { background: var(--gold-bg); color: var(--gold-deep); }
+.lang-zh { background: var(--gold-bg); color: var(--gold-deep); }
+
+/* ── Callout ── */
+.callout {
+  border-left: 3px solid var(--gold); background: var(--panel);
+  padding: 14px 18px; margin: 1.2rem 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-top: 1px solid var(--line); border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  font-size: 0.9rem;
+}
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--line); padding: 2rem 0; margin-top: 3rem;
+  font-size: 0.85rem; color: var(--muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .shell { width: min(100% - 24px, 100%); }
+  .hero-section { padding: 36px 0 32px; }
+  .hero-section h1 { font-size: 1.5rem; }
+  .markdown-body { padding: 24px; border-radius: 4px; }
+  body { font-size: 15px; }
+  .pkg-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
-    <h1>
-        <span class="en">ecat API Documentation</span>
-        <span class="lang-tag lang-en">EN</span>
-        <span class="zh">/ API 文档</span>
-        <span class="lang-tag lang-zh">中文</span>
-    </h1>
 
-    <p>
-        <strong>Bilingual Go package documentation for the ecat EtherCAT protocol library.</strong><br>
-        <strong>ecat EtherCAT 协议库的双语 Go 包文档。</strong>
-    </p>
+<!-- ════════════════ NAV ════════════════ -->
+<header class="site-header">
+  <div class="shell site-header__topbar">
+    <span class="site-brand">EtherCAT Go</span>
+    <nav class="site-nav">
+      <a href="../index.html">主页</a>
+      <a href="index.html" class="active">API 文档</a>
+      <a href="../arm/arm-optimization-report.html">ARM 优化报告</a>
+    </nav>
+  </div>
+</header>
 
-    <h2>Public Packages <span class="lang-tag lang-zh">公开包</span></h2>
-    <div class="pkg-grid">
-        <div class="pkg-card">
-            <div class="name"><a href="ecad.txt">ecad</a></div>
-            <div class="desc">ESC register address constants / ESC 寄存器地址常量</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="ecfr.txt">ecfr</a></div>
-            <div class="desc">Frame and datagram encoding/decoding / 帧和数据报编解码</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="ecmd.txt">ecmd</a></div>
-            <div class="desc">Command execution and multiplexing / 命令执行和多路复用</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="ecee.txt">ecee</a></div>
-            <div class="desc">EEPROM access via ESC registers / 通过 ESC 寄存器访问 EEPROM</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="eni.txt">eni</a></div>
-            <div class="desc">ESI XML file parser / ESI XML 文件解析器</div>
-        </div>
-    </div>
+<!-- ════════════════ HERO ════════════════ -->
+<section class="hero-section">
+  <div class="shell">
+    <span class="eyebrow">API Reference</span>
+    <h1>ecat API Documentation <span class="lang-tag lang-en">EN</span> / API 文档 <span class="lang-tag lang-zh">中文</span></h1>
+    <p class="subtitle">Bilingual Go package documentation for the ecat EtherCAT protocol library / ecat EtherCAT 协议库的双语 Go 包文档</p>
+  </div>
+</section>
 
-    <h2>Internal Packages <span class="lang-tag lang-zh">内部包</span></h2>
-    <div class="pkg-grid">
-        <div class="pkg-card">
-            <div class="name"><a href="marshalling.txt">marshalling</a></div>
-            <div class="desc">LE/BE binary encoding helpers / 小端/大端二进制编解码辅助</div>
-            <div class="internal">internal/</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="sim.txt">sim</a></div>
-            <div class="desc">L2 slave and bus simulation / L2 从站和总线模拟</div>
-            <div class="internal">internal/</div>
-        </div>
-        <div class="pkg-card">
-            <div class="name"><a href="udp.txt">udp</a></div>
-            <div class="desc">UDP multicast link-layer driver / UDP 多播链路层驱动</div>
-            <div class="internal">internal/</div>
-        </div>
-    </div>
+<!-- ════════════════ BODY ════════════════ -->
+<main class="page-main shell">
+<div class="markdown-body">
 
-    <h2>Quick Reference <span class="lang-tag lang-zh">快速参考</span></h2>
-    <h3>Microsecond-Level Performance <span class="lang-tag lang-zh">微秒级性能</span></h3>
-    <p>
-        All encoding/decoding operations use <code>unsafe.Pointer</code> with single
-        <code>uint64</code>+<code>uint16</code> memory operations. DatagramHeader.Overlay: ~5ns, Commit: ~3.3ns.
-        Core hot path &lt; 0.5% of typical 100μs EtherCAT cycle time. L2Bus cycle ~20μs.<br>
-        所有编解码操作使用 <code>unsafe.Pointer</code> 单次 <code>uint64</code>+<code>uint16</code> 内存操作。数据报头 Overlay: ~5ns, Commit: ~3.3ns。
-        核心热路径在 100μs EtherCAT 典型周期中占比 &lt; 0.5%。L2Bus 总线循环 ~20μs。
-    </p>
+<h2>Public Packages <span class="lang-tag lang-zh">公开包</span></h2>
+<div class="pkg-grid">
+  <div class="pkg-card">
+    <div class="name"><a href="ecad.txt">ecad</a></div>
+    <div class="desc">ESC register address constants / ESC 寄存器地址常量</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="ecfr.txt">ecfr</a></div>
+    <div class="desc">Frame and datagram encoding/decoding / 帧和数据报编解码</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="ecmd.txt">ecmd</a></div>
+    <div class="desc">Command execution and multiplexing / 命令执行和多路复用</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="ecee.txt">ecee</a></div>
+    <div class="desc">EEPROM access via ESC registers / 通过 ESC 寄存器访问 EEPROM</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="eni.txt">eni</a></div>
+    <div class="desc">ESI XML file parser / ESI XML 文件解析器</div>
+  </div>
+</div>
 
-    <h3>Package Dependencies <span class="lang-tag lang-zh">包依赖关系</span></h3>
-    <p>
-        <code>ecfr</code> / <code>ecad</code> / <code>eni</code> → base layer (no internal deps)<br>
-        <code>ecmd</code> → depends on <code>ecfr</code>, <code>internal/marshalling</code><br>
-        <code>ecee</code> → depends on <code>ecad</code>, <code>ecfr</code>, <code>ecmd</code><br>
-        <code>cmd/ethercat</code> → depends on <code>eni</code>
-    </p>
+<h2>Internal Packages <span class="lang-tag lang-zh">内部包</span></h2>
+<div class="pkg-grid">
+  <div class="pkg-card">
+    <div class="name"><a href="marshalling.txt">marshalling</a></div>
+    <div class="desc">LE/BE binary encoding helpers / 小端/大端二进制编解码辅助</div>
+    <div class="internal">internal/</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="sim.txt">sim</a></div>
+    <div class="desc">L2 slave and bus simulation / L2 从站和总线模拟</div>
+    <div class="internal">internal/</div>
+  </div>
+  <div class="pkg-card">
+    <div class="name"><a href="udp.txt">udp</a></div>
+    <div class="desc">UDP multicast link-layer driver / UDP 多播链路层驱动</div>
+    <div class="internal">internal/</div>
+  </div>
+</div>
 
-    <footer>
-        Generated from source code with <code>go doc -all</code> / 使用 <code>go doc -all</code> 从源码生成<br>
-        Part of the <a href="../index.html">ecat refactoring report</a> / <a href="../index.html">ecat 重构报告</a> 的一部分<br>
-        <a href="../arm/arm-optimization-report.html">ARM 优化专项报告</a>
-    </footer>
+<h2>Quick Reference <span class="lang-tag lang-zh">快速参考</span></h2>
+
+<h3>Microsecond-Level Performance <span class="lang-tag lang-zh">微秒级性能</span></h3>
+<p>
+  All encoding/decoding operations use <code>unsafe.Pointer</code> with single
+  <code>uint64</code>+<code>uint16</code> memory operations. DatagramHeader.Overlay: ~5ns, Commit: ~3.3ns.
+  Core hot path &lt; 0.5% of typical 100μs EtherCAT cycle time. L2Bus cycle ~20μs.<br>
+  所有编解码操作使用 <code>unsafe.Pointer</code> 单次 <code>uint64</code>+<code>uint16</code> 内存操作。数据报头 Overlay: ~5ns, Commit: ~3.3ns。
+  核心热路径在 100μs EtherCAT 典型周期中占比 &lt; 0.5%。L2Bus 总线循环 ~20μs。
+</p>
+
+<div class="callout">
+  <strong>ARM64 优化</strong> — 通过 <code>FrameOverlayPool</code> 零分配策略，ARM64 帧解码加速 18.9 倍。
+  <a href="../arm/arm-optimization-report.html">→ 查看 ARM 优化专项报告</a>
+</div>
+
+<h3>Package Dependencies <span class="lang-tag lang-zh">包依赖关系</span></h3>
+<p>
+  <code>ecfr</code> / <code>ecad</code> / <code>eni</code> → base layer (no internal deps)<br>
+  <code>ecmd</code> → depends on <code>ecfr</code>, <code>internal/marshalling</code><br>
+  <code>ecee</code> → depends on <code>ecad</code>, <code>ecfr</code>, <code>ecmd</code><br>
+  <code>cmd/ethercat</code> → depends on <code>eni</code>
+</p>
+
+</div><!-- /.markdown-body -->
+</main>
+
+<footer>
+  <div class="shell">
+    Generated from source code with <code>go doc -all</code> / 使用 <code>go doc -all</code> 从源码生成<br>
+    Part of the <a href="../index.html">ecat refactoring report</a> / <a href="../index.html">ecat 重构报告</a> 的一部分
+  </div>
+</footer>
+
 </body>
 </html>

@@ -1248,7 +1248,7 @@ func BenchmarkL2BusFullPipelineMultiSlave(b *testing.B) {
 		bus := &L2Bus{}
 		for j := 0; j < 3; j++ {
 			slave := NewL2Slave()
-			slave.BackingMemory[0x1000] = byte(0x42 + byte(j))
+			slave.BackingMemory[0x1000] = 0x42 + byte(j)
 			bus.Slaves = append(bus.Slaves, slave)
 		}
 

@@ -6,7 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARM 版本优化专项报告 — EtherCAT Go 库</title>
 <style>
-/* ── Fonts ─────────────────────────────────────────────── */
+/* ==========================================================================
+   EtherCAT Docs — 明亮工业轻奢版（EdgeX 金标风格）
+   ========================================================================== */
 @font-face {
   font-family: 'JetBrains Mono';
   src: url('../_shared/fonts/JetBrainsMono-Regular.ttf') format('truetype');
@@ -17,590 +19,543 @@
   src: url('../_shared/fonts/JetBrainsMono-Bold.ttf') format('truetype');
   font-weight: 700;
 }
-@font-face {
-  font-family: 'Instrument Sans';
-  src: url('../_shared/fonts/InstrumentSans-Regular.ttf') format('truetype');
-  font-weight: 400;
-}
-@font-face {
-  font-family: 'Instrument Sans';
-  src: url('../_shared/fonts/InstrumentSans-Bold.ttf') format('truetype');
-  font-weight: 700;
-}
 
-/* ── Variables ──────────────────────────────────────────── */
 :root {
-  --bg: #f5f6f8;
-  --bg2: #ffffff;
-  --ink: #1a1a2e;
-  --muted: #6b7280;
-  --rule: #e5e7eb;
-  --accent: #2563eb;
-  --accent2: #0891b2;
+  --bg: #f8f9fa;
+  --panel: #ffffff;
+  --line: #e9ecef;
+  --line-gold: rgba(197, 160, 89, 0.22);
+  --ink: #343a40;
+  --text: #495057;
+  --muted: #6c757d;
+  --gold: #c5a059;
+  --gold-deep: #b38f43;
+  --gold-light: #dfc38a;
+  --gold-bg: rgba(197, 160, 89, 0.08);
+  --gold-bg-strong: rgba(197, 160, 89, 0.10);
+  --shadow: 0 2px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.06);
+  --radius: 6px;
+  --header-glass: rgba(248, 249, 250, 0.92);
+  --err: #dc2626;
+  --warn: #d97706;
+  --good: #059669;
 }
 
-/* ── Reset ──────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
 body {
-  font-family: 'Instrument Sans', system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 16px;
-  line-height: 1.7;
-  color: var(--ink);
+  line-height: 1.75;
+  color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Top Nav ────────────────────────────────────────────── */
-.top-nav {
-  background: var(--bg2);
-  border-bottom: 1px solid var(--rule);
-  padding: 0.75rem 0;
-  font-size: 0.85rem;
-  font-family: 'JetBrains Mono', monospace;
-}
-.top-nav .container {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.top-nav a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.15s;
-}
-.top-nav a:hover { color: var(--ink); }
-.top-nav .sep { color: var(--muted); }
+a { color: var(--gold-deep); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--gold); }
 
-/* ── Layout ─────────────────────────────────────────────── */
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
+code, pre { font-family: 'JetBrains Mono', 'Consolas', monospace; }
 
-/* ── Header ─────────────────────────────────────────────── */
-.hero {
-  background: var(--bg2);
-  border-bottom: 1px solid var(--rule);
-  padding: 3rem 0 2.5rem;
-  margin-bottom: 3rem;
+.shell { width: min(100% - 48px, 960px); margin: 0 auto; }
+
+/* ── Nav ── */
+.site-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-glass);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-.hero h1 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 2.2rem;
-  font-weight: 700;
+.site-header__topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; padding: 16px 0;
+}
+.site-brand {
+  font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em;
   color: var(--ink);
-  line-height: 1.3;
-  margin-bottom: 0.75rem;
 }
-.hero .subtitle {
-  font-size: 1.1rem;
-  color: var(--muted);
-  margin-bottom: 1.5rem;
+.site-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-nav a {
+  padding: 8px 14px; border-radius: 4px;
+  color: var(--text); font-weight: 600; font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
 }
-.hero .meta {
-  display: flex;
-  gap: 2rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-}
-.hero .meta span { display: flex; align-items: center; gap: 0.4rem; }
-.hero .meta .dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-}
+.site-nav a:hover { background: var(--gold-bg); color: var(--gold-deep); }
+.site-nav .active { color: var(--gold-deep); background: var(--gold-bg); }
 
-/* ── Sections ───────────────────────────────────────────── */
-section {
-  margin-bottom: 3rem;
-}
-h2 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--accent);
-}
-h3 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 1.5rem 0 0.75rem;
-}
-p { margin-bottom: 1rem; color: var(--ink); }
-
-/* ── Key highlight ──────────────────────────────────────── */
-mark.key {
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* ── Metric cards ───────────────────────────────────────── */
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
-  margin: 1.5rem 0;
-}
-.metric-card {
-  background: var(--bg2);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 1.5rem;
+/* ── Hero ── */
+.hero-section {
+  border-bottom: 1px solid var(--line-gold);
+  background: radial-gradient(ellipse at 50% 0%, #ffffff 0%, var(--bg) 100%);
+  padding: 56px 0 48px;
   text-align: center;
 }
+.hero-section .eyebrow {
+  display: inline-block; margin-bottom: 12px; padding: 4px 12px;
+  border-radius: 4px; background: var(--gold-bg-strong);
+  border: 1px solid var(--line-gold);
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold-deep);
+}
+.hero-section h1 {
+  font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800;
+  line-height: 1.15; color: var(--ink); margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+.hero-section .subtitle {
+  font-size: 1.05rem; color: var(--muted); margin-bottom: 0;
+}
+.hero-section .meta {
+  margin-top: 20px; font-size: 0.8rem; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.hero-section .meta span { margin: 0 12px; }
+
+/* ── Content ── */
+.page-main { padding: 0 0 80px; }
+
+.markdown-body {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: clamp(32px, 4vw, 56px); margin-top: 32px;
+}
+
+h2 {
+  font-size: 1.6rem; font-weight: 700; color: var(--ink);
+  margin: 2.8em 0 0.8em; padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--line);
+}
+h2:first-child { margin-top: 0; }
+
+h3 {
+  font-size: 1.15rem; font-weight: 600; color: var(--gold-deep);
+  margin: 2em 0 0.6em;
+}
+
+h4 { font-size: 1rem; font-weight: 600; color: var(--ink); margin: 1.5em 0 0.5em; }
+
+p { margin: 0.75rem 0; }
+
+.mark-key {
+  background: none; color: var(--gold-deep); font-weight: 600;
+}
+
+/* ── Metric cards ── */
+.metric-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1rem; margin: 1.5rem 0;
+}
+.metric-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.25rem;
+  text-align: center; box-shadow: var(--shadow);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.metric-card:hover { border-color: var(--line-gold); box-shadow: 0 8px 24px rgba(197,160,89,0.10); }
 .metric-card .value {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--accent);
+  font-size: 1.7rem; font-weight: 800; color: var(--ink);
   line-height: 1.2;
 }
 .metric-card .label {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-top: 0.4rem;
+  font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem;
 }
 .metric-card.highlight {
-  border-color: var(--accent);
-  background: #eff6ff;
+  border-color: var(--line-gold);
+  background: linear-gradient(135deg, #fff 0%, rgba(197,160,89,0.04) 100%);
 }
+.metric-card.highlight .value { color: var(--gold-deep); }
 
-/* ── Tables ──────────────────────────────────────────────── */
+/* ── Tables ── */
 .table-wrap {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 600px;
-  margin: 1.5rem 0;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  overflow-x: auto; overflow-y: auto; max-height: 600px;
+  margin: 1.2rem 0;
 }
 table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  font-family: 'JetBrains Mono', monospace;
+  width: 100%; border-collapse: collapse; font-size: 0.88rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 thead th {
-  background: var(--bg);
-  color: var(--ink);
-  font-weight: 700;
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 2px solid var(--rule);
-  white-space: nowrap;
+  background: #f8f9fa; color: var(--gold-deep); font-weight: 600;
+  text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--line-gold);
+  position: sticky; top: 0;
 }
 tbody td {
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink);
+  padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--text);
 }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: #f8fafc; }
+tbody tr:nth-child(even) td { background: rgba(248,249,250,0.6); }
+tbody tr:hover td { background: var(--gold-bg); }
 td.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  text-align: right; font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', monospace;
 }
 td.ratio {
-  text-align: right;
-  font-weight: 700;
+  text-align: right; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
 }
-td.ratio.good { color: #059669; }
-td.ratio.warn { color: #d97706; }
-td.ratio.bad { color: #dc2626; }
+td.ratio.good { color: var(--good); }
+td.ratio.warn { color: var(--warn); }
+td.ratio.bad { color: var(--err); }
 td.alloc { text-align: center; color: var(--muted); }
 
-/* ── Charts ──────────────────────────────────────────────── */
-.chart-figure {
-  margin: 2rem 0;
+/* ── Code ── */
+pre {
+  background: #f1f3f5; border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px;
+  overflow-x: auto; margin: 1rem 0; font-size: 0.82rem;
 }
-.chart-figure figcaption {
+pre code { font-size: 0.82rem; line-height: 1.55; color: var(--ink); background: transparent; padding: 0; }
+p code {
+  background: var(--gold-bg); padding: 0.15em 0.4em;
+  border-radius: 3px; color: var(--gold-deep);
+}
+
+/* ── Callout ── */
+.callout {
+  border-left: 3px solid var(--gold); background: var(--panel);
+  padding: 14px 18px; margin: 1.2rem 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-top: 1px solid var(--line); border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink);
+}
+.callout strong { color: var(--gold-deep); }
+.callout.warn {
+  border-left-color: var(--warn);
+  background: #fffdf7;
+}
+.callout.warn strong { color: var(--warn); }
+
+/* ── Chart ── */
+.chart-figure { margin: 2rem 0; }
+.chart-figure figcaption {
+  font-size: 0.9rem; font-weight: 600; color: var(--ink);
   margin-bottom: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
 }
 .chart-container { min-height: 400px; }
 .chart-container.short { min-height: 300px; }
 
-/* ── Callout ─────────────────────────────────────────────── */
-.callout {
-  background: #eff6ff;
-  border-left: 4px solid var(--accent);
-  padding: 1rem 1.25rem;
-  margin: 1.5rem 0;
-  border-radius: 0 6px 6px 0;
-  font-size: 0.95rem;
-}
-.callout strong { color: var(--accent); }
-.callout.warn {
-  background: #fffbeb;
-  border-left-color: #d97706;
-}
-.callout.warn strong { color: #d97706; }
+/* ── Lists ── */
+ul { margin-left: 1.5rem; margin-bottom: 1rem; }
+li { margin-bottom: 0.35rem; }
 
-/* ── Code ────────────────────────────────────────────────── */
-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85em;
-  background: var(--bg);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-  color: var(--accent);
-}
-
-/* ── Footer ──────────────────────────────────────────────── */
+/* ── Footer ── */
 footer {
-  border-top: 1px solid var(--rule);
-  padding: 2rem 0;
-  margin-top: 3rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-align: center;
+  border-top: 1px solid var(--line); padding: 2rem 0; margin-top: 3rem;
+  font-size: 0.85rem; color: var(--muted); text-align: center;
 }
-footer .sources ol {
-  padding-left: 1.2rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-align: left;
-}
-footer .sources li {
-  margin-bottom: 0.5rem;
-  overflow-wrap: break-word;
-  word-break: break-all;
-}
-footer .sources .src-title {
-  color: var(--ink);
-  word-break: normal;
-}
-footer .sources .src-url {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.82rem;
-  color: var(--accent);
-  word-break: break-all;
-}
+footer .sources ol { padding-left: 1.2rem; font-size: 0.85rem; color: var(--muted); text-align: left; }
+footer .sources li { margin-bottom: 0.5rem; overflow-wrap: break-word; word-break: break-all; }
+footer .sources .src-title { color: var(--ink); word-break: normal; }
+footer .sources .src-url { display: block; margin-top: 0.15rem; font-size: 0.82rem; color: var(--gold-deep); word-break: break-all; }
 footer .sources a { word-break: break-all; }
+sup a { color: var(--gold-deep); text-decoration: none; font-size: 0.75em; font-weight: 600; }
+sup a:hover { text-decoration: underline; }
 
-/* ── Responsive ──────────────────────────────────────────── */
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .container { padding: 0 1rem; }
-  .hero { padding: 2.5rem 0 2rem; }
-  .hero h1 { font-size: 1.6rem; }
-  .hero .meta { flex-direction: column; gap: 0.5rem; }
+  .shell { width: min(100% - 24px, 100%); }
+  .hero-section { padding: 36px 0 32px; }
+  .hero-section h1 { font-size: 1.5rem; }
   .metric-grid { grid-template-columns: 1fr; }
-  h2 { font-size: 1.3rem; }
+  .markdown-body { padding: 24px; border-radius: 4px; }
+  body { font-size: 15px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ── Top Nav ────────────────────────────────────────────── -->
-<nav class="top-nav">
-  <div class="container">
-    <a href="../index.html">← 返回主页</a>
-    <span class="sep">|</span>
-    <a href="../api/index.html">API 文档</a>
-    <span class="sep">|</span>
-    <span style="color:var(--ink);font-weight:700">ARM 优化报告</span>
-  </div>
-</nav>
-
-<!-- ── Hero ──────────────────────────────────────────────── -->
-<header class="hero">
-  <div class="container">
-    <h1>ARM 版本优化专项报告</h1>
-    <p class="subtitle">EtherCAT Go 库 — 端到端微秒级性能分析与 ARM64 平台优化</p>
-    <div class="meta">
-      <span><span class="dot"></span> 项目：github.com/anviod/EtherCAT</span>
-      <span>日期：2026-07-10</span>
-      <span>版本：v0.3.0</span>
-    </div>
+<!-- ════════════════ NAV ════════════════ -->
+<header class="site-header">
+  <div class="shell site-header__topbar">
+    <span class="site-brand">EtherCAT Go</span>
+    <nav class="site-nav">
+      <a href="../index.html">主页</a>
+      <a href="../api/index.html">API 文档</a>
+      <a href="arm-optimization-report.html" class="active">ARM 优化报告</a>
+    </nav>
   </div>
 </header>
 
-<main class="container">
-
-<!-- ── 1. 概述 ────────────────────────────────────────────── -->
-<section>
-  <h2>1. 概述</h2>
-  <p>
-    本报告针对 <code>EtherCAT</code> Go 库在 <mark class="key">ARM64 平台</mark>（Cortex-A55）上的性能表现进行系统性分析，
-    对比 x86-64（Intel i5-13500H）基准数据，识别热路径瓶颈，并实施针对性优化。
-    目标是在不破坏现有包结构和对外接口的前提下，确保典型 EtherCAT 周期（~100μs）内核心热路径占比远低于 0.5%。
-  </p>
-
-  <div class="metric-grid">
-    <div class="metric-card">
-      <div class="value">~100 μs</div>
-      <div class="label">典型 EtherCAT 周期</div>
-    </div>
-    <div class="metric-card highlight">
-      <div class="value">&lt; 0.02%</div>
-      <div class="label">核心热路径占比</div>
-    </div>
-    <div class="metric-card">
-      <div class="value">~58 μs</div>
-      <div class="label">ARM64 总线循环 (L2Bus.Cycle)</div>
-    </div>
+<!-- ════════════════ HERO ════════════════ -->
+<section class="hero-section">
+  <div class="shell">
+    <span class="eyebrow">ARM Optimization Report</span>
+    <h1>ARM 版本优化专项报告</h1>
+    <p class="subtitle">EtherCAT Go 库 — 端到端微秒级性能分析与 ARM64 平台优化</p>
+    <p class="meta">
+      <span>项目：github.com/anviod/EtherCAT</span> <span>2026-07-10</span> <span>v0.3.0</span>
+    </p>
   </div>
 </section>
 
-<!-- ── 2. 测试环境 ────────────────────────────────────────── -->
-<section>
-  <h2>2. 测试环境</h2>
+<!-- ════════════════ BODY ════════════════ -->
+<main class="page-main shell">
+<div class="markdown-body">
 
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>项目</th><th>x86-64</th><th>ARM64</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>设备</td><td>Windows 笔记本</td><td>hne-gateway (工业网关)</td></tr>
-      <tr><td>CPU</td><td>Intel i5-13500H (16 线程)</td><td>4×Cortex-A55 @ 1.8GHz</td></tr>
-      <tr><td>内存</td><td>32 GB DDR5</td><td>4 GB LPDDR4</td></tr>
-      <tr><td>OS</td><td>Windows 11</td><td>Linux 5.10 (aarch64)</td></tr>
-      <tr><td>Go 版本</td><td>go1.24</td><td>交叉编译 GOOS=linux GOARCH=arm64</td></tr>
-      <tr><td>编译标志</td><td>默认</td><td>CGO_ENABLED=0</td></tr>
-    </tbody>
-  </table>
+<!-- ── 1. 概述 ── -->
+<h2>1. 概述</h2>
+<p>
+  本报告针对 <code>EtherCAT</code> Go 库在 <mark class="key">ARM64 平台</mark>（Cortex-A55）上的性能表现进行系统性分析，
+  对比 x86-64（Intel i5-13500H）基准数据，识别热路径瓶颈，并实施针对性优化。
+  目标是在不破坏现有包结构和对外接口的前提下，确保典型 EtherCAT 周期（~100μs）内核心热路径占比远低于 0.5%。
+</p>
+
+<div class="metric-grid">
+  <div class="metric-card">
+    <div class="value">~100 μs</div>
+    <div class="label">典型 EtherCAT 周期</div>
   </div>
-
-  <div class="callout">
-    <strong>注：</strong>ARM64 测试在真实硬件上进行（SSH root@192.168.3.230），
-    非 QEMU 模拟。Cortex-A55 为顺序执行核心，IPC 和分支预测能力显著弱于 i5-13500H 的 Golden Cove 性能核。
-    因此 2-5 倍的纯 CPU 性能差距属于正常范围。
+  <div class="metric-card highlight">
+    <div class="value">&lt; 0.02%</div>
+    <div class="label">核心热路径占比</div>
   </div>
-</section>
-
-<!-- ── 3. 核心热路径性能对比 ──────────────────────────────── -->
-<section>
-  <h2>3. 核心热路径性能对比</h2>
-
-  <h3>3.1 ecfr — 纯 CPU 密集路径（0 allocs）</h3>
-  <p>这些路径<mark class="key">无堆分配</mark>，使用 <code>unsafe.Pointer</code> 直接操作内存。
-  性能差异主要体现 CPU 微架构差距（A55 顺序执行 vs i5 乱序执行）。</p>
-
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>DatagramHeaderOverlay</td><td class="num">2.61</td><td class="num">7.75</td><td class="ratio good">3.0x</td><td class="alloc">0</td></tr>
-      <tr><td>DatagramHeaderCommit</td><td class="num">3.30</td><td class="num">5.06</td><td class="ratio good">1.5x</td><td class="alloc">0</td></tr>
-      <tr><td>DatagramOverlay</td><td class="num">4.62</td><td class="num">14.29</td><td class="ratio good">3.1x</td><td class="alloc">0</td></tr>
-      <tr><td>DatagramCommit</td><td class="num">3.17</td><td class="num">9.22</td><td class="ratio good">2.9x</td><td class="alloc">0</td></tr>
-      <tr><td>ETHFrameWriteDown</td><td class="num">1.66</td><td class="num">5.25</td><td class="ratio good">3.2x</td><td class="alloc">0</td></tr>
-    </tbody>
-  </table>
+  <div class="metric-card">
+    <div class="value">~58 μs</div>
+    <div class="label">ARM64 总线循环 (L2Bus.Cycle)</div>
   </div>
+</div>
 
-  <h3>3.2 ecfr — 含分配路径（关键瓶颈）</h3>
-  <p>这些路径涉及<mark class="key">堆分配</mark>（Datagram 指针、Frame 对象）。
-  ARM64 上分配开销远高于 x86，导致性能差距放大到 5-9 倍。</p>
+<!-- ── 2. 测试环境 ── -->
+<h2>2. 测试环境</h2>
 
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>FrameOverlay</td><td class="num">55.57</td><td class="num">498.5</td><td class="ratio bad">9.0x</td><td class="alloc">2</td></tr>
-      <tr style="background:#f0fdf4;"><td><strong>FrameOverlayReuse</strong> ✨</td><td class="num"><strong>9.70</strong></td><td class="num"><strong>26.34</strong></td><td class="ratio good"><strong>2.7x</strong></td><td class="alloc"><strong>0</strong></td></tr>
-      <tr><td>FrameOverlayPool</td><td class="num">9.36</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">0</td></tr>
-      <tr><td>FrameNewDatagram</td><td class="num">141.7</td><td class="num">810.5</td><td class="ratio bad">5.7x</td><td class="alloc">2</td></tr>
-      <tr><td>FrameCommit</td><td class="num">827.1</td><td class="num">139.5</td><td class="ratio good">0.17x</td><td class="alloc">0</td></tr>
-    </tbody>
-  </table>
-  </div>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>项目</th><th>x86-64</th><th>ARM64</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>设备</td><td>Windows 笔记本</td><td>RK3588s (工业网关)</td></tr>
+    <tr><td>CPU</td><td>Intel i5-13500H (16 线程)</td><td>4×Cortex-A55 @ 1.8GHz</td></tr>
+    <tr><td>内存</td><td>32 GB DDR5</td><td>4 GB LPDDR4</td></tr>
+    <tr><td>OS</td><td>Windows 11</td><td>Linux 5.10 (aarch64)</td></tr>
+    <tr><td>Go 版本</td><td>go1.24</td><td>交叉编译 GOOS=linux GOARCH=arm64</td></tr>
+    <tr><td>编译标志</td><td>默认</td><td>CGO_ENABLED=0</td></tr>
+  </tbody>
+</table>
+</div>
 
-  <div class="callout">
-    <strong>关键发现：</strong><code>OverlayReuse</code> 在 ARM64 上比 <code>FrameOverlay</code> 快 <strong>18.9 倍</strong>
-    （498.5 → 26.34 ns/op），因为消除了 2 次 Datagram 堆分配。这证明<mark class="key">ARM64 上分配是首要性能瓶颈</mark>。
-  </div>
+<div class="callout">
+  <strong>注：</strong>ARM64 测试在真实硬件上进行（SSH root@192.168.3.230），
+  非 QEMU 模拟。Cortex-A55 为顺序执行核心，IPC 和分支预测能力显著弱于 i5-13500H 的 Golden Cove 性能核。
+  因此 2-5 倍的纯 CPU 性能差距属于正常范围。
+</div>
 
-  <h3>3.3 ecmd — 命令执行路径</h3>
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>ExecuteRead8</td><td class="num">212.4</td><td class="num">1,225</td><td class="ratio warn">5.8x</td><td class="alloc">7</td></tr>
-      <tr><td>ExecuteWrite8</td><td class="num">222.6</td><td class="num">1,379</td><td class="ratio warn">6.2x</td><td class="alloc">7</td></tr>
-      <tr><td>ExecuteRead16</td><td class="num">954.6</td><td class="num">1,445</td><td class="ratio good">1.5x</td><td class="alloc">7</td></tr>
-      <tr><td>CommandFramerNew</td><td class="num">194.8</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">2</td></tr>
-      <tr><td>CommandFramerCycle</td><td class="num">2,679</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">1</td></tr>
-    </tbody>
-  </table>
-  </div>
+<!-- ── 3. 核心热路径性能对比 ── -->
+<h2>3. 核心热路径性能对比</h2>
 
-  <div class="callout warn">
-    <strong>注意：</strong>7 allocs/op 主要来自测试 mock（<code>mockCommanderWithData</code>），
-    生产代码 <code>CommandFramer</code> 仅 2 allocs/op。实际场景中 ecmd 开销可接受。
-  </div>
+<h3>3.1 ecfr — 纯 CPU 密集路径（0 allocs）</h3>
+<p>这些路径<mark class="key">无堆分配</mark>，使用 <code>unsafe.Pointer</code> 直接操作内存。
+性能差异主要体现 CPU 微架构差距（A55 顺序执行 vs i5 乱序执行）。</p>
 
-  <h3>3.4 sim — 总线仿真路径</h3>
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>L2BusCycle（单帧单从站）</td><td class="num">16,475</td><td class="num">58,101</td><td class="ratio warn">3.5x</td><td class="alloc">21</td></tr>
-      <tr><td>L2BusFullPipeline</td><td class="num">89,808</td><td class="num">62,166</td><td class="ratio good">0.69x</td><td class="alloc">21</td></tr>
-      <tr><td>L2BusCycleMultiSlave（3从站）</td><td class="num">301,382</td><td class="num">176,771</td><td class="ratio good">0.59x</td><td class="alloc">43</td></tr>
-    </tbody>
-  </table>
-  </div>
-</section>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>DatagramHeaderOverlay</td><td class="num">2.61</td><td class="num">7.75</td><td class="ratio good">3.0x</td><td class="alloc">0</td></tr>
+    <tr><td>DatagramHeaderCommit</td><td class="num">3.30</td><td class="num">5.06</td><td class="ratio good">1.5x</td><td class="alloc">0</td></tr>
+    <tr><td>DatagramOverlay</td><td class="num">4.62</td><td class="num">14.29</td><td class="ratio good">3.1x</td><td class="alloc">0</td></tr>
+    <tr><td>DatagramCommit</td><td class="num">3.17</td><td class="num">9.22</td><td class="ratio good">2.9x</td><td class="alloc">0</td></tr>
+    <tr><td>ETHFrameWriteDown</td><td class="num">1.66</td><td class="num">5.25</td><td class="ratio good">3.2x</td><td class="alloc">0</td></tr>
+  </tbody>
+</table>
+</div>
 
-<!-- ── 4. 关键发现 ────────────────────────────────────────── -->
-<section>
-  <h2>4. 关键发现与瓶颈分析</h2>
+<h3>3.2 ecfr — 含分配路径（关键瓶颈）</h3>
+<p>这些路径涉及<mark class="key">堆分配</mark>（Datagram 指针、Frame 对象）。
+ARM64 上分配开销远高于 x86，导致性能差距放大到 5-9 倍。</p>
 
-  <h3>4.1 分配开销放大效应</h3>
-  <p>
-    ARM64 上每次 <code>make()</code> 或 <code>&amp;Struct{}</code> 的代价是 x86 的 <mark class="key">3-5 倍</mark>。
-    在含分配的路径中，这个差距被进一步放大：
-  </p>
-  <ul style="margin-left:1.5rem;margin-bottom:1rem;">
-    <li><code>FrameOverlay</code>（2 allocs）：x86 55.6ns → ARM64 498.5ns（<strong>9.0x</strong>）</li>
-    <li><code>FrameOverlayReuse</code>（0 allocs）：x86 9.7ns → ARM64 26.3ns（<strong>2.7x</strong>）</li>
-  </ul>
-  <p>消除分配后，ARM64 性能差距从 9.0x 缩小到 2.7x，接近纯 CPU 路径的 2-3x 基线。</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>FrameOverlay</td><td class="num">55.57</td><td class="num">498.5</td><td class="ratio bad">9.0x</td><td class="alloc">2</td></tr>
+    <tr style="background:rgba(5,150,105,0.06);"><td><strong>FrameOverlayReuse</strong> ✨</td><td class="num"><strong>9.70</strong></td><td class="num"><strong>26.34</strong></td><td class="ratio good"><strong>2.7x</strong></td><td class="alloc"><strong>0</strong></td></tr>
+    <tr><td>FrameOverlayPool</td><td class="num">9.36</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">0</td></tr>
+    <tr><td>FrameNewDatagram</td><td class="num">141.7</td><td class="num">810.5</td><td class="ratio bad">5.7x</td><td class="alloc">2</td></tr>
+    <tr><td>FrameCommit</td><td class="num">827.1</td><td class="num">139.5</td><td class="ratio good">0.17x</td><td class="alloc">0</td></tr>
+  </tbody>
+</table>
+</div>
 
-  <h3>4.2 为什么不能简单池化 sim 缓冲区</h3>
-  <p>
-    <code>Frame.Overlay</code> 持有输入 buffer 的引用（<code>f.buffer = d</code>），
-    且 Datagram 对象通过 <code>unsafe.Pointer</code> 引用 buffer 内存。
-    这意味着<mark class="key">不能安全地在多个 Frame 之间共享同一个 buffer</mark>，
-    否则会导致数据被后续帧的写入覆盖。尝试池化 frameBuf 和 dgBuf 的优化已因数据损坏而被回退。
-  </p>
+<div class="callout">
+  <strong>关键发现：</strong><code>OverlayReuse</code> 在 ARM64 上比 <code>FrameOverlay</code> 快 <strong>18.9 倍</strong>
+  （498.5 → 26.34 ns/op），因为消除了 2 次 Datagram 堆分配。这证明<mark class="key">ARM64 上分配是首要性能瓶颈</mark>。
+</div>
 
-  <h3>4.3 OverlayReuse 突破</h3>
-  <p>
-    通过在 <code>Frame.OverlayReuse</code> 中复用 <code>[]*Datagram</code> 切片的底层数组，
-    成功将 <code>FrameOverlay</code> 的 2 allocs/op 降至 0。这对于总线循环中重复解码帧的场景至关重要。
-    新增的 <code>FrameOverlayPool</code> 辅助类型提供了更简洁的 API。
-  </p>
+<h3>3.3 ecmd — 命令执行路径</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>ExecuteRead8</td><td class="num">212.4</td><td class="num">1,225</td><td class="ratio warn">5.8x</td><td class="alloc">7</td></tr>
+    <tr><td>ExecuteWrite8</td><td class="num">222.6</td><td class="num">1,379</td><td class="ratio warn">6.2x</td><td class="alloc">7</td></tr>
+    <tr><td>ExecuteRead16</td><td class="num">954.6</td><td class="num">1,445</td><td class="ratio good">1.5x</td><td class="alloc">7</td></tr>
+    <tr><td>CommandFramerNew</td><td class="num">194.8</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">2</td></tr>
+    <tr><td>CommandFramerCycle</td><td class="num">2,679</td><td class="num">—</td><td class="ratio good">—</td><td class="alloc">1</td></tr>
+  </tbody>
+</table>
+</div>
 
-  <figure class="chart-figure">
-    <figcaption>图 1：FrameOverlay 系列 ARM64 性能对比 (ns/op)</figcaption>
-    <div id="chart-overlay-compare" class="chart-container short"></div>
-  </figure>
+<div class="callout warn">
+  <strong>注意：</strong>7 allocs/op 主要来自测试 mock（<code>mockCommanderWithData</code>），
+  生产代码 <code>CommandFramer</code> 仅 2 allocs/op。实际场景中 ecmd 开销可接受。
+</div>
 
-  <figure class="chart-figure">
-    <figcaption>图 2：ecfr 全路径 x86 vs ARM64 性能对比 (ns/op, 对数坐标)</figcaption>
-    <div id="chart-full-compare" class="chart-container"></div>
-  </figure>
-</section>
+<h3>3.4 sim — 总线仿真路径</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>基准测试</th><th class="num">x86 (ns/op)</th><th class="num">ARM64 (ns/op)</th><th class="num">倍率</th><th class="alloc">分配</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>L2BusCycle（单帧单从站）</td><td class="num">16,475</td><td class="num">58,101</td><td class="ratio warn">3.5x</td><td class="alloc">21</td></tr>
+    <tr><td>L2BusFullPipeline</td><td class="num">89,808</td><td class="num">62,166</td><td class="ratio good">0.69x</td><td class="alloc">21</td></tr>
+    <tr><td>L2BusCycleMultiSlave（3从站）</td><td class="num">301,382</td><td class="num">176,771</td><td class="ratio good">0.59x</td><td class="alloc">43</td></tr>
+  </tbody>
+</table>
+</div>
 
-<!-- ── 5. 已实施优化 ──────────────────────────────────────── -->
-<section>
-  <h2>5. 已实施优化</h2>
+<!-- ── 4. 关键发现 ── -->
+<h2>4. 关键发现与瓶颈分析</h2>
 
-  <h3>5.1 FrameOverlayPool 辅助类型</h3>
-  <p>
-    新增 <code>ecfr.FrameOverlayPool</code>，封装 Datagram 指针池的预分配与复用逻辑。
-    调用方只需创建一次 pool，即可在热路径中实现零分配帧解码：
-  </p>
-  <ul style="margin-left:1.5rem;margin-bottom:1rem;">
-    <li><code>NewFrameOverlayPool(capacity)</code> — 创建预分配池</li>
-    <li><code>pool.Overlay(&amp;f, buf)</code> — 零分配帧解码</li>
-    <li>x86 上 <strong>9.36 ns/op</strong>（对比 FrameOverlay 的 55.57 ns/op，<strong>5.9x 加速</strong>）</li>
-    <li>ARM64 上约 <strong>26 ns/op</strong>（对比 FrameOverlay 的 498.5 ns/op，<strong>19x 加速</strong>）</li>
-  </ul>
+<h3>4.1 分配开销放大效应</h3>
+<p>
+  ARM64 上每次 <code>make()</code> 或 <code>&amp;Struct{}</code> 的代价是 x86 的 <mark class="key">3-5 倍</mark>。
+  在含分配的路径中，这个差距被进一步放大：
+</p>
+<ul>
+  <li><code>FrameOverlay</code>（2 allocs）：x86 55.6ns → ARM64 498.5ns（<strong>9.0x</strong>）</li>
+  <li><code>FrameOverlayReuse</code>（0 allocs）：x86 9.7ns → ARM64 26.3ns（<strong>2.7x</strong>）</li>
+</ul>
+<p>消除分配后，ARM64 性能差距从 9.0x 缩小到 2.7x，接近纯 CPU 路径的 2-3x 基线。</p>
 
-  <h3>5.2 OverlayReuse 多数据报支持</h3>
-  <p>
-    <code>OverlayReuse</code> 现在支持多数据报帧的零分配解码。在 3 数据报帧场景下：
-    x86 上 <strong>18.52 ns/op</strong>（对比 FrameOverlayMultiDatagram 的 816 ns/op，<strong>44x 加速</strong>）。
-  </p>
+<h3>4.2 为什么不能简单池化 sim 缓冲区</h3>
+<p>
+  <code>Frame.Overlay</code> 持有输入 buffer 的引用（<code>f.buffer = d</code>），
+  且 Datagram 对象通过 <code>unsafe.Pointer</code> 引用 buffer 内存。
+  这意味着<mark class="key">不能安全地在多个 Frame 之间共享同一个 buffer</mark>，
+  否则会导致数据被后续帧的写入覆盖。尝试池化 frameBuf 和 dgBuf 的优化已因数据损坏而被回退。
+</p>
 
-  <h3>5.3 测试覆盖</h3>
-  <ul style="margin-left:1.5rem;margin-bottom:1rem;">
-    <li><code>TestFrameOverlayReuseBasic</code> — 验证 OverlayReuse 与 Overlay 结果一致性</li>
-    <li><code>TestFrameOverlayReuseWithPool</code> — 验证池复用不扩容</li>
-    <li><code>TestFrameOverlayPoolBasic</code> — 验证 FrameOverlayPool 多次调用正确性</li>
-    <li><code>TestFrameOverlayReuseMultiDatagram</code> — 验证多数据报帧解码（含 Last 标志位）</li>
-    <li><code>BenchmarkFrameOverlayPool</code> / <code>BenchmarkFrameOverlayReuse</code> / <code>BenchmarkFrameOverlayReuseMultiDatagram</code> — 量化各场景性能</li>
-  </ul>
+<h3>4.3 OverlayReuse 突破</h3>
+<p>
+  通过在 <code>Frame.OverlayReuse</code> 中复用 <code>[]*Datagram</code> 切片的底层数组，
+  成功将 <code>FrameOverlay</code> 的 2 allocs/op 降至 0。这对于总线循环中重复解码帧的场景至关重要。
+  新增的 <code>FrameOverlayPool</code> 辅助类型提供了更简洁的 API。
+</p>
 
-  <h3>5.4 清理死代码</h3>
-  <p>移除 <code>internal/sim/mem.go</code> 中未使用的 <code>frameBuf</code> 字段。</p>
-</section>
+<figure class="chart-figure">
+  <figcaption>图 1：FrameOverlay 系列 ARM64 性能对比 (ns/op)</figcaption>
+  <div id="chart-overlay-compare" class="chart-container short"></div>
+</figure>
 
-<!-- ── 6. 性能目标达成 ────────────────────────────────────── -->
-<section>
-  <h2>6. 性能目标达成分析</h2>
+<figure class="chart-figure">
+  <figcaption>图 2：ecfr 全路径 x86 vs ARM64 性能对比 (ns/op, 对数坐标)</figcaption>
+  <div id="chart-full-compare" class="chart-container"></div>
+</figure>
 
-  <div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>性能目标</th><th>要求</th><th>ARM64 实测</th><th>状态</th></tr>
-    </thead>
-    <tbody>
-      <tr style="background:#f0fdf4;">
-        <td>典型 EtherCAT 周期</td><td>~100 μs</td><td>L2BusCycle 58.1 μs，FullPipeline 62.2 μs</td><td>✅ 达标</td>
-      </tr>
-      <tr style="background:#f0fdf4;">
-        <td>核心热路径占比</td><td>&lt; 0.5%</td><td>DatagramHeaderOverlay(7.75ns)+Commit(5.06ns) = 12.81ns，占 100μs 的 0.013%</td><td>✅ 远低于</td>
-      </tr>
-      <tr style="background:#f0fdf4;">
-        <td>总线循环时间</td><td>~20 μs (x86)</td><td>x86 FullPipeline: 89.8 μs (含从站处理)，纯 Overlay+Commit: ~3.3 μs</td><td>✅ 达标</td>
-      </tr>
-      <tr style="background:#f0fdf4;">
-        <td>零分配热路径</td><td>所有核心路径</td><td>DatagramHeader Overlay/Commit、Datagram Overlay/Commit、ETHFrameWriteDown 均为 0 allocs</td><td>✅ 达标</td>
-      </tr>
-      <tr style="background:#f0fdf4;">
-        <td>测试覆盖率</td><td>健康水平</td><td>ecfr 78.0%、ecmd 86.1%、ecee 91.5%、sim 82.7%、marshalling 90.3%</td><td>✅ 达标</td>
-      </tr>
-    </tbody>
-  </table>
-  </div>
-</section>
+<!-- ── 5. 已实施优化 ── -->
+<h2>5. 已实施优化</h2>
 
-<!-- ── 7. 建议与后续工作 ──────────────────────────────────── -->
-<section>
-  <h2>7. 建议与后续工作</h2>
+<h3>5.1 FrameOverlayPool 辅助类型</h3>
+<p>
+  新增 <code>ecfr.FrameOverlayPool</code>，封装 Datagram 指针池的预分配与复用逻辑。
+  调用方只需创建一次 pool，即可在热路径中实现零分配帧解码：
+</p>
+<ul>
+  <li><code>NewFrameOverlayPool(capacity)</code> — 创建预分配池</li>
+  <li><code>pool.Overlay(&amp;f, buf)</code> — 零分配帧解码</li>
+  <li>x86 上 <strong>9.36 ns/op</strong>（对比 FrameOverlay 的 55.57 ns/op，<strong>5.9x 加速</strong>）</li>
+  <li>ARM64 上约 <strong>26 ns/op</strong>（对比 FrameOverlay 的 498.5 ns/op，<strong>19x 加速</strong>）</li>
+</ul>
 
-  <h3>7.1 调用方指南</h3>
-  <ul style="margin-left:1.5rem;margin-bottom:1rem;">
-    <li><strong>重复帧解码场景</strong>（如总线循环）：优先使用 <code>FrameOverlayPool</code> 或 <code>OverlayReuse</code>，避免直接使用 <code>Frame.Overlay</code>。</li>
-    <li><strong>单次解码场景</strong>：可使用 <code>Frame.Overlay</code>，开销可接受。</li>
-    <li><strong>sim 包</strong>：若需进一步优化，需要在 Frame API 层面增加 buffer 生命周期管理，或在 L2Bus 中引入 <code>sync.Pool</code> 管理 Frame 对象。</li>
-  </ul>
+<h3>5.2 OverlayReuse 多数据报支持</h3>
+<p>
+  <code>OverlayReuse</code> 现在支持多数据报帧的零分配解码。在 3 数据报帧场景下：
+  x86 上 <strong>18.52 ns/op</strong>（对比 FrameOverlayMultiDatagram 的 816 ns/op，<strong>44x 加速</strong>）。
+</p>
 
-  <h3>7.2 潜在优化方向</h3>
-  <ul style="margin-left:1.5rem;margin-bottom:1rem;">
-    <li><strong>ecmd sync.Pool</strong>：为 <code>ExecutingCommand</code> 和 <code>outgoingFrame</code> 引入对象池，减少 CommandFramer 的 2 allocs/op。</li>
-    <li><strong>sim Frame 池化</strong>：在 <code>L2Bus.New()</code> 中池化 Frame 对象和缓冲区，减少 21 allocs/op。</li>
-    <li><strong>ARM 特定编译优化</strong>：探索 <code>GOARM</code> 标志、link-time optimization 等对 A55 的收益。</li>
-    <li><strong>持续性能监控</strong>：将 ARM64 基准测试纳入 CI 流程，防止性能退化。</li>
-  </ul>
+<h3>5.3 测试覆盖</h3>
+<ul>
+  <li><code>TestFrameOverlayReuseBasic</code> — 验证 OverlayReuse 与 Overlay 结果一致性</li>
+  <li><code>TestFrameOverlayReuseWithPool</code> — 验证池复用不扩容</li>
+  <li><code>TestFrameOverlayPoolBasic</code> — 验证 FrameOverlayPool 多次调用正确性</li>
+  <li><code>TestFrameOverlayReuseMultiDatagram</code> — 验证多数据报帧解码（含 Last 标志位）</li>
+  <li><code>BenchmarkFrameOverlayPool</code> / <code>BenchmarkFrameOverlayReuse</code> / <code>BenchmarkFrameOverlayReuseMultiDatagram</code> — 量化各场景性能</li>
+</ul>
 
-  <div class="callout">
-    <strong>总结：</strong>通过 <code>OverlayReuse</code> 和 <code>FrameOverlayPool</code>，
-    在 ARM64 上实现了 18.9 倍的帧解码加速，核心热路径占比从 0.5% 降至 0.013%。
-    所有性能目标均已达成，且未破坏任何现有 API 兼容性。
-  </div>
-</section>
+<h3>5.4 清理死代码</h3>
+<p>移除 <code>internal/sim/mem.go</code> 中未使用的 <code>frameBuf</code> 字段。</p>
 
+<!-- ── 6. 性能目标达成 ── -->
+<h2>6. 性能目标达成分析</h2>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>性能目标</th><th>要求</th><th>ARM64 实测</th><th>状态</th></tr>
+  </thead>
+  <tbody>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>典型 EtherCAT 周期</td><td>~100 μs</td><td>L2BusCycle 58.1 μs，FullPipeline 62.2 μs</td><td>✅ 达标</td>
+    </tr>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>核心热路径占比</td><td>&lt; 0.5%</td><td>DatagramHeaderOverlay(7.75ns)+Commit(5.06ns) = 12.81ns，占 100μs 的 0.013%</td><td>✅ 远低于</td>
+    </tr>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>总线循环时间</td><td>~20 μs (x86)</td><td>x86 FullPipeline: 89.8 μs (含从站处理)，纯 Overlay+Commit: ~3.3 μs</td><td>✅ 达标</td>
+    </tr>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>零分配热路径</td><td>所有核心路径</td><td>DatagramHeader Overlay/Commit、Datagram Overlay/Commit、ETHFrameWriteDown 均为 0 allocs</td><td>✅ 达标</td>
+    </tr>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>测试覆盖率</td><td>健康水平</td><td>ecfr 78.0%、ecmd 86.1%、ecee 91.5%、sim 82.7%、marshalling 90.3%</td><td>✅ 达标</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ── 7. 建议与后续工作 ── -->
+<h2>7. 建议与后续工作</h2>
+
+<h3>7.1 调用方指南</h3>
+<ul>
+  <li><strong>重复帧解码场景</strong>（如总线循环）：优先使用 <code>FrameOverlayPool</code> 或 <code>OverlayReuse</code>，避免直接使用 <code>Frame.Overlay</code>。</li>
+  <li><strong>单次解码场景</strong>：可使用 <code>Frame.Overlay</code>，开销可接受。</li>
+  <li><strong>sim 包</strong>：若需进一步优化，需要在 Frame API 层面增加 buffer 生命周期管理，或在 L2Bus 中引入 <code>sync.Pool</code> 管理 Frame 对象。</li>
+</ul>
+
+<h3>7.2 潜在优化方向</h3>
+<ul>
+  <li><strong>ecmd sync.Pool</strong>：为 <code>ExecutingCommand</code> 和 <code>outgoingFrame</code> 引入对象池，减少 CommandFramer 的 2 allocs/op。</li>
+  <li><strong>sim Frame 池化</strong>：在 <code>L2Bus.New()</code> 中池化 Frame 对象和缓冲区，减少 21 allocs/op。</li>
+  <li><strong>ARM 特定编译优化</strong>：探索 <code>GOARM</code> 标志、link-time optimization 等对 A55 的收益。</li>
+  <li><strong>持续性能监控</strong>：将 ARM64 基准测试纳入 CI 流程，防止性能退化。</li>
+</ul>
+
+<div class="callout">
+  <strong>总结：</strong>通过 <code>OverlayReuse</code> 和 <code>FrameOverlayPool</code>，
+  在 ARM64 上实现了 18.9 倍的帧解码加速，核心热路径占比从 0.5% 降至 0.013%。
+  所有性能目标均已达成，且未破坏任何现有 API 兼容性。
+</div>
+
+</div><!-- /.markdown-body -->
 </main>
 
 <footer>
-  <div class="container">
+  <div class="shell">
     <p>EtherCAT Go Library — ARM Optimization Report — 2026-07-10</p>
   </div>
 </footer>
