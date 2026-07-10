@@ -22,10 +22,10 @@ ecfr (帧/数据报编解码) ← internal/marshalling (共享编解码器)
   ↓
 ecmd (命令执行、帧调度、并发复用)
   ↓
-┌──────────────────┬──────────┬──────────────────┐
-│ internal/link/udp│  ecee    │  internal/sim    │
-│ (UDP 驱动)       │ (EEPROM) │  (从站模拟)      │
-└──────────────────┴──────────┴──────────────────┘
+┌──────────┬──────────┬──────────────────┐
+│ etransport│  ecee    │  internal/sim    │
+│ (UDP)     │ (EEPROM) │  (从站模拟)      │
+└──────────┴──────────┴──────────────────┘
 eni (ESI XML 解析器) — 独立模块
 ```
 
@@ -41,8 +41,8 @@ eni (ESI XML 解析器) — 独立模块
 ├── ecfr/                  # 帧/数据报编解码
 ├── ecmd/                  # 命令执行
 ├── eni/                   # ESI XML 解析器
+├── etransport/            # UDP 多播传输层
 ├── internal/              # 私有包
-│   ├── link/udp/          # UDP 链路层驱动
 │   ├── marshalling/       # 小端/大端编解码辅助
 │   └── sim/               # L2 从站/总线模拟
 ├── .github/workflows/     # CI（测试 + 部署 Pages）
@@ -61,7 +61,7 @@ eni (ESI XML 解析器) — 独立模块
 | `ecmd` | 命令执行、帧调度和 goroutine 安全的多路复用 |
 | `ecee` | ESC EEPROM 读写访问 |
 | `eni` | ESI（EtherCAT 从站信息）XML 文件解析器 |
-| `internal/link/udp` | UDP 多播链路层驱动 |
+| `etransport` | UDP 多播传输层（实现 ecmd.Framer 接口） |
 | `internal/sim` | L2 从站和总线模拟，用于测试 |
 | `internal/marshalling` | 共享的小端/大端二进制编解码辅助函数 |
 
@@ -70,7 +70,7 @@ eni (ESI XML 解析器) — 独立模块
 ### 安装
 
 ```bash
-go get github.com/anviod/EtherCAT@v2.1.0
+go get github.com/anviod/EtherCAT@v2.1.1
 ```
 
 ### 解析 ESI 文件

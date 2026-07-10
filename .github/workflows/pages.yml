@@ -34,10 +34,10 @@ jobs:
           mkdir -p docs/api
           go install golang.org/x/pkgsite/cmd/pkgsite@latest || true
           # Generate text-based package docs as fallback
-          for pkg in ecad ecfr ecmd ecee eni; do
+          for pkg in ecad ecfr ecmd ecee eni etransport; do
             go doc -all ./.$pkg > docs/api/${pkg}.txt 2>/dev/null || true
           done
-          for pkg in internal/marshalling internal/sim internal/link/udp; do
+          for pkg in internal/marshalling internal/sim; do
             name=$(basename $pkg)
             go doc -all ./$pkg > docs/api/${name}.txt 2>/dev/null || true
           done

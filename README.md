@@ -22,10 +22,10 @@ ecfr (frame/datagram encoding) ← internal/marshalling (shared codec)
   ↓
 ecmd (command execution, frame scheduling, concurrent multiplexing)
   ↓
-┌──────────────────┬──────────┬──────────────────┐
-│ internal/link/udp│  ecee    │  internal/sim    │
-│ (UDP driver)     │ (EEPROM) │  (slave sim)     │
-└──────────────────┴──────────┴──────────────────┘
+┌──────────┬──────────┬──────────────────┐
+│ etransport│  ecee    │  internal/sim    │
+│ (UDP)     │ (EEPROM) │  (slave sim)     │
+└──────────┴──────────┴──────────────────┘
 eni (ESI XML parser) — standalone
 ```
 
@@ -41,8 +41,8 @@ eni (ESI XML parser) — standalone
 ├── ecfr/                  # Frame/datagram encoding
 ├── ecmd/                  # Command execution
 ├── eni/                   # ESI XML parser
+├── etransport/            # UDP multicast transport layer
 ├── internal/              # Private packages
-│   ├── link/udp/          # UDP link-layer driver
 │   ├── marshalling/       # LE/BE binary helpers
 │   └── sim/               # L2 slave/bus simulation
 ├── .github/workflows/     # CI (test + deploy Pages)
@@ -61,7 +61,7 @@ eni (ESI XML parser) — standalone
 | `ecmd` | Command execution, frame scheduling, and goroutine-safe multiplexing |
 | `ecee` | ESC EEPROM read/write access |
 | `eni` | ESI (EtherCAT Slave Information) XML file parser |
-| `internal/link/udp` | UDP multicast link-layer driver |
+| `etransport` | UDP multicast transport layer (implements ecmd.Framer) |
 | `internal/sim` | L2 slave and bus simulation for testing |
 | `internal/marshalling` | Shared LE/BE binary encoding helpers |
 
@@ -70,7 +70,7 @@ eni (ESI XML parser) — standalone
 ### Installation
 
 ```bash
-go get github.com/anviod/EtherCAT@v2.1.0
+go get github.com/anviod/EtherCAT@v2.1.1
 ```
 
 ### Parse an ESI File

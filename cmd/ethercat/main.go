@@ -133,7 +133,7 @@ func handleInfo(filename string) {
 func handleScan() {
 	fmt.Println("scan: requires a UDP Framer with a valid network interface")
 	fmt.Println("Example usage in code:")
-	fmt.Println("  framer, _ := udp.NewUDPFramer(iface, group, cycletime)")
+	fmt.Println("  framer, _ := etransport.NewUDPFramer(iface, group, cycletime)")
 	fmt.Println("  defer framer.Close()")
 	fmt.Println("  cf := ecmd.NewCommandFramer(framer)")
 	fmt.Println("  // use cf to scan devices...")

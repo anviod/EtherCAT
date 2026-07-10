@@ -36,11 +36,11 @@ clean:
 # Generate API documentation
 docs:
 	@mkdir -p docs/api
-	@for pkg in ecad ecfr ecmd ecee eni; do \
+	@for pkg in ecad ecfr ecmd ecee eni etransport; do \
 		echo "Generating docs/$$pkg.txt ..."; \
 		go doc -all ./$$pkg > docs/api/$$pkg.txt; \
 	done
-	@for pkg in internal/marshalling internal/sim internal/link/udp; do \
+	@for pkg in internal/marshalling internal/sim; do \
 		name=$$(basename $$pkg); \
 		echo "Generating docs/$$name.txt ..."; \
 		go doc -all ./$$pkg > docs/api/$$name.txt; \

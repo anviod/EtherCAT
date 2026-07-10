@@ -1,6 +1,6 @@
 //go:build !darwin
 
-package udp
+package etransport
 
 // errorMask is a no-op on non-Darwin platforms. It simply returns the
 // original error unchanged.
