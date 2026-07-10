@@ -1,0 +1,30 @@
+# Binaries
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+coverage.out
+coverage.html
+*.prof
+
+# Benchmark output
+bench*.txt
+bench_stress.txt
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Trae temp
+.trae-html-share-packages/

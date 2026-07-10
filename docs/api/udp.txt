@@ -1,0 +1,57 @@
+﻿package udp // import "github.com/anviod/EtherCAT/internal/link/udp"
+
+Package udp provides a UDP multicast link-layer driver for EtherCAT. 包 udp 提供
+EtherCAT 的 UDP 多播链路层驱动。
+
+It implements the ecmd.Framer interface using UDP multicast transport over
+golang.org/x/net/ipv4 for multicast group management.
+
+本包使用 golang.org/x/net/ipv4 进行多播组管理， 通过 UDP 多播传输实现 ecmd.Framer 接口。
+
+CONSTANTS
+
+const (
+	// EthercatUDPPort is the standard EtherCAT UDP port number.
+	EthercatUDPPort = 0x88A4
+)
+
+TYPES
+
+type UDPFramer struct {
+	// Has unexported fields.
+}
+    UDPFramer implements ecmd.Framer using UDP multicast transport.
+
+func NewUDPFramer(iface *net.Interface, group net.IP, cycletime time.Duration) (*UDPFramer, error)
+    NewUDPFramer creates a new UDP multicast EtherCAT framer.
+
+    It binds a UDP socket to EthercatUDPPort, joins the given multicast group on
+    the specified interface, and configures the ipv4.PacketConn for multicast
+    send/receive. Loopback is disabled.
+
+func (f *UDPFramer) Close() error
+    Close releases the UDP socket and the ipv4.PacketConn.
+
+    Bug fix: the original code called f.Close() recursively inside Close(),
+    causing a stack overflow. This version correctly calls f.sock.Close() and
+    f.conn.Close() directly.
+
+func (f *UDPFramer) Cycle() (iframes []*ecfr.Frame, err error)
+    Cycle sends all queued outgoing frames to the multicast group and reads
+    incoming responses.
+
+    It supports cycle stretching: if fewer responses than sent frames are
+    received, it will wait up to 10 additional cycle-time periods before giving
+    up. Each read operation uses a deadline-based timeout.
+
+func (f *UDPFramer) DebugMessage(m string)
+    DebugMessage sends a debug message string to the multicast group on port
+    1024. Any error is intentionally ignored.
+
+func (f *UDPFramer) New(maxdatalen int) (*ecfr.Frame, error)
+    New creates a new EtherCAT frame wrapped in an Ethernet frame.
+
+    It allocates an Ethernet frame buffer via ecfr.OverlayETHFrame, creates an
+    ecfr.Frame in the payload area, and sets the EtherCAT type to 1. The frame
+    is queued for the next Cycle() call.
+

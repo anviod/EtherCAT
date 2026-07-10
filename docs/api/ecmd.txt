@@ -1,0 +1,219 @@
+﻿package ecmd // import "github.com/anviod/EtherCAT/ecmd"
+
+Package ecmd provides EtherCAT command execution and multiplexing utilities.
+包 ecmd 提供 EtherCAT 命令执行和多路复用工具。
+
+This package implements core command execution, frame scheduling, and concurrent
+command multiplexing for the EtherCAT protocol stack.
+
+本包实现了 EtherCAT 协议栈的核心命令执行、帧调度和并发命令多路复用。
+
+# Key types
+
+  - Commander: interface for creating and cycling commands
+  - CommandFramer: schedules commands into frames and matches responses
+  - [Mux]: goroutine-safe multiplexer for concurrent command execution
+
+# Usage
+
+    cf := ecmd.NewCommandFramer(framer)
+    addr := ecfr.PositionalAddr(0, 0x1000)
+    data, err := ecmd.ExecuteRead8(cf, addr, 1)
+
+CONSTANTS
+
+const (
+	// CommandFramerMaxDatagramsLen is the maximum length for datagrams in a frame.
+	CommandFramerMaxDatagramsLen = 1470
+)
+const (
+	DefaultFramelossTries = 3
+)
+    Default values for options.
+
+
+VARIABLES
+
+var (
+	// NoFrame indicates that a frame did not arrive within the retry limit.
+	NoFrame = errors.New("frame did not arrive")
+	// NoOverlay indicates that the incoming datagram could not be overlaid.
+	NoOverlay = errors.New("failed to overlay")
+)
+    Sentinel errors.
+
+
+FUNCTIONS
+
+func ChooseDefaultError(cmd *ExecutingCommand) error
+    ChooseDefaultError selects the appropriate error based on command state.
+
+func ChooseWorkingCounterError(ec *ExecutingCommand, expwc uint16) error
+    ChooseWorkingCounterError creates a WorkingCounterError if the working
+    counter doesn't match the expected value.
+
+func ExecuteRead(c Commander, addr ecfr.DatagramAddress, n int, expwc uint16) ([]byte, error)
+    ExecuteRead reads n bytes from the given address.
+
+func ExecuteRead16(c Commander, addr ecfr.DatagramAddress, expwc uint16) (uint16, error)
+    ExecuteRead16 reads a 16-bit word from the given address.
+
+func ExecuteRead16Options(c Commander, addr ecfr.DatagramAddress, expwc uint16, opts Options) (uint16, error)
+    ExecuteRead16Options reads a 16-bit word with custom options.
+
+func ExecuteRead32(c Commander, addr ecfr.DatagramAddress, expwc uint16) (uint32, error)
+    ExecuteRead32 reads a 32-bit dword from the given address.
+
+func ExecuteRead32Options(c Commander, addr ecfr.DatagramAddress, expwc uint16, opts Options) (uint32, error)
+    ExecuteRead32Options reads a 32-bit dword with custom options.
+
+func ExecuteRead8(c Commander, addr ecfr.DatagramAddress, expwc uint16) (uint8, error)
+    ExecuteRead8 reads a single byte from the given address.
+
+func ExecuteRead8Options(c Commander, addr ecfr.DatagramAddress, expwc uint16, opts Options) (uint8, error)
+    ExecuteRead8Options reads a single byte with custom options.
+
+func ExecuteReadOptions(c Commander, addr ecfr.DatagramAddress, n int, expwc uint16, opts Options) ([]byte, error)
+    ExecuteReadOptions reads n bytes with custom options. 读取 n 字节（带自定义选项）。 Hot
+    path: creates command → sets addr → Cycle() → returns data.
+
+func ExecuteWrite(c Commander, addr ecfr.DatagramAddress, w []byte, expwc uint16) error
+    ExecuteWrite writes n bytes to the given address.
+
+func ExecuteWrite16(c Commander, addr ecfr.DatagramAddress, v uint16, expwc uint16) error
+    ExecuteWrite16 writes a 16-bit word to the given address.
+
+func ExecuteWrite16Options(c Commander, addr ecfr.DatagramAddress, v uint16, expwc uint16, opts Options) error
+    ExecuteWrite16Options writes a 16-bit word with custom options. 写入 16
+    位字（带自定义选项）。 Perf: stack-allocated array, zero heap allocation.
+
+func ExecuteWrite32(c Commander, addr ecfr.DatagramAddress, v uint32, expwc uint16) error
+    ExecuteWrite32 writes a 32-bit dword to the given address.
+
+func ExecuteWrite32Options(c Commander, addr ecfr.DatagramAddress, v uint32, expwc uint16, opts Options) error
+    ExecuteWrite32Options writes a 32-bit dword with custom options. 写入 32
+    位双字（带自定义选项）。 Perf: stack-allocated array, zero heap allocation.
+
+func ExecuteWrite8(c Commander, addr ecfr.DatagramAddress, v uint8, expwc uint16) error
+    ExecuteWrite8 writes a single byte to the given address.
+
+func ExecuteWrite8Options(c Commander, addr ecfr.DatagramAddress, v uint8, expwc uint16, opts Options) error
+    ExecuteWrite8Options writes a single byte with custom options.
+    写入单字节（带自定义选项）。 Perf: stack-allocated array, zero heap allocation.
+
+func ExecuteWriteOptions(c Commander, addr ecfr.DatagramAddress, w []byte, expwc uint16, opts Options) error
+    ExecuteWriteOptions writes n bytes with custom options. 写入 n 字节（带自定义选项）。 Hot
+    path: creates command → sets addr → Cycle() → checks WKC.
+
+func IsNoFrame(err error) bool
+    IsNoFrame checks if the error is a NoFrame error.
+
+func IsWorkingCounterError(err error) bool
+    IsWorkingCounterError checks if the error is a WorkingCounterError.
+
+func NewMultiplexer(c Commander) (*Multiplexer, error)
+    NewMultiplexer creates a new Multiplexer and starts its background
+    goroutine.
+
+
+TYPES
+
+type CommandFramer struct {
+	// Has unexported fields.
+}
+    CommandFramer implements Commander by scheduling commands into frames and
+    matching responses.
+
+func NewCommandFramer(framer Framer) *CommandFramer
+    NewCommandFramer creates a new CommandFramer using the given Framer.
+
+func (cf *CommandFramer) Close() error
+    Close closes the CommandFramer, releasing resources.
+
+func (cf *CommandFramer) Cycle() error
+    Cycle sends all queued frames and matches incoming responses to outgoing
+    commands. 发送所有排队帧并将响应匹配到对应的发送命令。 Matching: by frame length, datagram count,
+    index, then per-datagram command+length.
+
+func (cf *CommandFramer) DebugMessage(m string)
+    DebugMessage sends a debug message to the underlying framer if it supports
+    it.
+
+func (cf *CommandFramer) New(datalen int) (*ExecutingCommand, error)
+    New creates a new command with the given data length, adding it to the
+    current frame. 创建指定数据长度的新命令并加入当前帧。 Creates a new frame automatically if the
+    current one is full.
+
+type Commander interface {
+	// New creates a new executing command with the given data length.
+	New(datalen int) (*ExecutingCommand, error)
+	// Cycle performs one round of command execution.
+	Cycle() error
+	// Close closes the commander and releases resources.
+	Close() error
+}
+    Commander defines the interface for executing EtherCAT commands.
+
+type ExecutingCommand struct {
+	DatagramOut *ecfr.Datagram
+	DatagramIn  *ecfr.Datagram
+	Arrived     bool
+	Overlayed   bool
+	Error       error
+}
+    ExecutingCommand represents a command that is in the process of being
+    executed.
+
+type Framer interface {
+	// New creates a new frame with the given maximum data length.
+	New(maxdatalen int) (*ecfr.Frame, error)
+	// Cycle performs one round of frame I/O, returning the received frames.
+	Cycle() ([]*ecfr.Frame, error)
+}
+    Framer defines the interface for low-level frame operations.
+
+type Multiplexer struct {
+	// Has unexported fields.
+}
+    Multiplexer provides goroutine-safe multiplexing of commands over a single
+    Commander. Multiple muxChannel instances can be opened, each implementing
+    the Commander interface. All channels' commands are collected and executed
+    in a single Cycle() call to the underlying Commander.
+
+func (m *Multiplexer) Close() error
+    Close closes the multiplexer and all its channels. It cancels the context,
+    waits for the goroutine to finish, and closes the underlying Commander.
+
+func (m *Multiplexer) Cycle() error
+    Cycle triggers one multiplexed cycle. It waits for all channels to complete
+    their New() calls, then executes the underlying Commander's Cycle().
+
+func (m *Multiplexer) New(datalen int) (*ExecutingCommand, error)
+    New creates a new ExecutingCommand on the multiplexer itself. This is a
+    convenience method that delegates to the underlying Commander.
+
+func (m *Multiplexer) OpenCommander() (Commander, error)
+    OpenCommander opens a new multiplexed channel that implements the Commander
+    interface. Each channel can be used independently and concurrently.
+
+type Options struct {
+	// FramelossTries is the number of retries when a frame is lost.
+	// If 0, DefaultFramelossTries (3) is used.
+	FramelossTries int
+	// WCDeadline is the deadline by which a working counter match must occur.
+	// If zero, no deadline is enforced.
+	WCDeadline time.Time
+}
+    Options contains configuration options for command execution.
+
+type WorkingCounterError struct {
+	Command    ecfr.CommandType
+	Addr32     uint32
+	Want, Have uint16
+}
+    WorkingCounterError represents an error when the working counter does not
+    match expectations.
+
+func (e WorkingCounterError) Error() string
+    Error implements the error interface.
+

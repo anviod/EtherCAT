@@ -1,0 +1,303 @@
+﻿package ecfr // import "github.com/anviod/EtherCAT/ecfr"
+
+Package ecfr implements EtherCAT frame and datagram encoding/decoding. 包 ecfr
+实现了 EtherCAT 帧和数据报的编解码。
+
+This package provides zero-allocation, unsafe.Pointer-optimized encoding and
+decoding of the EtherCAT wire protocol, including:
+  - Datagram headers (10-byte, little-endian)
+  - EtherCAT frame headers (2-byte)
+  - Ethernet frame encapsulation
+  - Working Counter (WKC) handling
+
+本包提供零分配、unsafe.Pointer 优化的 EtherCAT 线路协议编解码，包括：
+  - 数据报头（10字节，小端序）
+  - EtherCAT 帧头（2字节）
+  - 以太网帧封装
+  - 工作计数器（WKC）处理
+
+# Performance
+
+All hot-path operations are zero-allocation:
+  - DatagramHeader.Overlay: ~5 ns
+  - DatagramHeader.Commit: ~3.3 ns
+  - Header.Overlay/Commit: ~0.5 ns
+  - ETHFrame.WriteDown: ~2.1 ns
+
+CONSTANTS
+
+const DatagramOverheadLength = 12
+    DatagramOverheadLength is the overhead bytes per datagram: 10 bytes header +
+    2 bytes WKC.
+
+const FrameOverheadLen = 2
+    FrameOverheadLen is the size of the EtherCAT frame header in bytes.
+
+
+TYPES
+
+type CommandType uint8
+    CommandType is a 4-bit EtherCAT command type.
+
+const (
+	NOP  CommandType = 0
+	APRD CommandType = 1
+	APWR CommandType = 2
+	APRW CommandType = 3
+	FPRD CommandType = 4
+	FPWR CommandType = 5
+	FPRW CommandType = 6
+	BRD  CommandType = 7
+	BWR  CommandType = 8
+	BRW  CommandType = 9
+	LRD  CommandType = 10
+	LWR  CommandType = 11
+	LRW  CommandType = 12
+	ARMW CommandType = 13
+	FRMW CommandType = 14
+)
+    EtherCAT command types.
+
+func (ct CommandType) DoesRead() bool
+    DoesRead returns true if this command performs a read operation.
+
+func (ct CommandType) DoesWrite() bool
+    DoesWrite returns true if this command performs a write operation.
+
+func (ct CommandType) String() string
+    String returns the human-readable name of the command.
+
+type Datagram struct {
+	Header DatagramHeader
+	Data   []byte
+	WKC    uint16
+
+	// Has unexported fields.
+}
+    Datagram represents a complete EtherCAT datagram: header + data + WKC.
+
+func PointDatagramTo(d []byte) (Datagram, error)
+    PointDatagramTo overlays a Datagram onto the given byte slice.
+
+func (dg *Datagram) ByteLen() int
+    ByteLen returns the total length of the datagram on the wire.
+
+func (dg *Datagram) Commit() ([]byte, error)
+    Commit writes the datagram (header + WKC) back to the buffer. 将数据报（头部 +
+    WKC）写回缓冲区。 Perf: WKC write via unsafe.Pointer. Error from Header.Commit() is
+    checked.
+
+func (dg *Datagram) Overlay(d []byte) ([]byte, error)
+    Overlay reads a complete datagram (header + data + WKC) from d. 从 d
+    读取完整数据报（头部 + 数据 + WKC）。 Perf: WKC read via unsafe.Pointer for zero-overhead
+    access.
+
+func (dg *Datagram) SetDataLen(ndl int) error
+    SetDataLen adjusts the data length of the datagram and re-slices Data.
+
+func (dg *Datagram) Summary() string
+    Summary returns a compact human-readable summary of the datagram.
+
+type DatagramAddress struct {
+	// Has unexported fields.
+}
+    DatagramAddress represents a 32-bit EtherCAT address with an associated
+    addressing mode.
+
+func DatagramAddressFromCommand(addr32 uint32, ct CommandType) DatagramAddress
+    DatagramAddressFromCommand constructs a DatagramAddress from a raw 32-bit
+    address and a command type, inferring the address type.
+
+func FixedAddr(stationaddr uint16, offset uint16) DatagramAddress
+    FixedAddr creates a fixed station address.
+
+func PositionalAddr(position int16, offset uint16) DatagramAddress
+    PositionalAddr creates a position-based address (auto-increment).
+
+func (da DatagramAddress) Addr32() uint32
+    Addr32 returns the raw 32-bit address value.
+
+func (da *DatagramAddress) IncrementSlaveAddr()
+    IncrementSlaveAddr increments the lower 16 bits (slave position or address).
+
+func (da DatagramAddress) IsPhysical() bool
+    IsPhysical returns true for positional or fixed addressing.
+
+func (da DatagramAddress) Offset() uint16
+    Offset returns the upper 16 bits of the address (register offset).
+
+func (da DatagramAddress) PositionOrAddress() uint16
+    PositionOrAddress returns the lower 16 bits (position or station address).
+
+func (da *DatagramAddress) SetOffset(offs uint16)
+    SetOffset sets the upper 16 bits of the address.
+
+func (da DatagramAddress) String() string
+    String returns a human-readable representation of the address.
+
+func (da DatagramAddress) Type() DatagramAddressType
+    Type returns the addressing mode.
+
+type DatagramAddressType uint
+    DatagramAddressType classifies the addressing mode of a datagram.
+
+const (
+	UninitializedDatagramAddressType DatagramAddressType = iota
+	Positional
+	Fixed
+	Broadcast
+	Logical
+)
+type DatagramHeader struct {
+	Command   CommandType
+	Index     uint8
+	Addr32    uint32
+	LenWord   uint16
+	Interrupt uint16
+
+	// Has unexported fields.
+}
+    DatagramHeader represents the 10-byte EtherCAT datagram header.
+
+func PointDatagramHeaderTo(d []byte) (DatagramHeader, error)
+    PointDatagramHeaderTo overlays a DatagramHeader onto the given byte slice.
+
+func (dh *DatagramHeader) Commit() ([]byte, error)
+    Commit writes the 10-byte header back to the buffer. 将 10 字节头部写回缓冲区。
+
+    Perf: single uint64 write (bytes 0-7) + uint16 write (bytes 8-9). 性能优化：单次
+    uint64 写入 + uint16 写入。
+
+func (dh *DatagramHeader) DataLength() uint16
+    DataLength returns the lower 11 bits of LenWord.
+
+func (dh *DatagramHeader) Last() bool
+    Last returns true if bit 15 is 0 (last datagram indicator, active low).
+
+func (dh *DatagramHeader) LogicalAddr() uint32
+    LogicalAddr returns the full Addr32 as a logical address.
+
+func (dh *DatagramHeader) OffsetAddr() uint16
+    OffsetAddr returns the upper 16 bits of Addr32 (register offset).
+
+func (dh *DatagramHeader) Overlay(d []byte) ([]byte, error)
+    Overlay reads the 10-byte header from d. 从 d 读取 10 字节头部。
+
+    Perf: single uint64 read (bytes 0-7) + uint16 read (bytes 8-9) via
+    unsafe.Pointer. 2 memory ops instead of 10 byte accesses. 性能优化：单次 uint64 读取
+    + uint16 读取，2 次内存操作替代 10 次字节访问。
+
+func (dh *DatagramHeader) Roundtrip() bool
+    Roundtrip returns true if bit 14 is set (roundtrip flag).
+
+func (dh *DatagramHeader) SetLast(last bool)
+    SetLast sets the "last" indicator (bit 15 = 0 for last, 1 for not last).
+
+func (dh *DatagramHeader) SlaveAddr() uint16
+    SlaveAddr returns the lower 16 bits of Addr32 (position or station address).
+
+type ETHAddr [6]byte
+    ETHAddr is a 6-byte Ethernet MAC address.
+
+func (ea ETHAddr) String() string
+    String returns the MAC address in colon-separated hex notation.
+
+type ETHFrame struct {
+	Destination ETHAddr
+	Source      ETHAddr
+	Type        uint16
+	UseVlan     bool
+	VLANTCI     uint16
+
+	// Has unexported fields.
+}
+    ETHFrame represents an Ethernet frame encapsulating EtherCAT data.
+
+func OverlayETHFrame(fb []byte) (*ETHFrame, error)
+    OverlayETHFrame creates an ETHFrame pointing into fb (allocates if empty).
+    创建指向 fb 的 ETHFrame（fb 为空时自动分配）。 Perf: Type/VLAN read via binary.BigEndian
+    (network byte order).
+
+func (ef *ETHFrame) GetFooterLen() int
+    GetFooterLen returns the length of the Ethernet footer (FCS = 4 bytes).
+
+func (ef *ETHFrame) GetFrameBuf() []byte
+    GetFrameBuf returns the underlying frame buffer.
+
+func (ef *ETHFrame) GetHeaderLen() int
+    GetHeaderLen returns the length of the Ethernet header (dest + src + type,
+    plus optional VLAN tag).
+
+func (ef *ETHFrame) GetPayload() []byte
+    GetPayload returns the payload slice (between the header and the FCS).
+
+func (ef *ETHFrame) SetPayloadLen(npl int) error
+    SetPayloadLen adjusts the total frame length to accommodate a payload of npl
+    bytes.
+
+func (ef *ETHFrame) WriteDown() error
+    WriteDown serializes Ethernet header fields into the frame buffer.
+    将以太网头部字段序列化到帧缓冲区。 Perf: Type field written via binary.BigEndian (network
+    byte order).
+
+type Frame struct {
+	Header    Header
+	Datagrams []*Datagram
+
+	// Has unexported fields.
+}
+    Frame represents a complete EtherCAT frame (header + one or more datagrams).
+
+func PointFrameTo(d []byte) (Frame, error)
+    PointFrameTo creates a Frame that points into the given byte slice.
+    The header area is zero-initialised.
+
+func (f *Frame) ByteLen() int
+    ByteLen returns the total wire length (header + all datagrams). 返回帧的总线路长度（帧头
+    + 所有数据报）。 Perf: O(1) via cached value updated incrementally by NewDatagram.
+
+func (f *Frame) Commit() ([]byte, error)
+    Commit serializes the frame header and all datagrams to the buffer.
+    将帧头和所有数据报序列化到缓冲区。 Frame-length field is auto-updated. Uses cached byteLen
+    (O(1)).
+
+func (f *Frame) MultilineSummary() string
+    MultilineSummary returns a multi-line human-readable summary of the frame
+    and all its datagrams.
+
+func (f *Frame) NewDatagram(datalen int) (*Datagram, error)
+    NewDatagram allocates a new datagram and appends it to the frame.
+    分配新数据报并追加到帧。 Perf: cached byteLen updated incrementally (O(1), no
+    traversal).
+
+func (f *Frame) Overlay(d []byte) ([]byte, error)
+    Overlay decodes a complete frame from d: header + all datagrams.
+    从 d 解码完整帧：帧头 + 所有数据报。 byteLen cache is initialized for O(1) ByteLen() after
+    overlay.
+
+type Header struct {
+	Word uint16
+	// Has unexported fields.
+}
+    Header represents the 2-byte EtherCAT frame header. Bit layout:
+
+        bits 0-10:  frame length (11 bits)
+        bits 12-15: frame type (4 bits)
+
+func (h *Header) Commit() ([]byte, error)
+    Commit writes the 2-byte header back to the buffer. 将 2 字节帧头写回缓冲区。 Perf:
+    single-cycle uint16 write via unsafe.Pointer.
+
+func (h *Header) FrameLength() uint16
+    FrameLength returns the frame length (lower 11 bits of Word).
+
+func (h *Header) Overlay(b []byte) ([]byte, error)
+    Overlay reads the 2-byte header from b. 从 b 读取 2 字节帧头。 Perf: single-cycle
+    uint16 read via unsafe.Pointer, zero allocs.
+
+func (h *Header) SetType(t uint8)
+    SetType sets the frame type (upper 4 bits of Word).
+
+func (h *Header) Type() uint8
+    Type returns the frame type (upper 4 bits of Word).
+

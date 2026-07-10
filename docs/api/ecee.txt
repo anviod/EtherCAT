@@ -1,0 +1,28 @@
+﻿package ecee // import "github.com/anviod/EtherCAT/ecee"
+
+Package ecee provides EtherCAT EEPROM access via the ESC register interface.
+包 ecee 提供通过 ESC 寄存器接口访问 EtherCAT EEPROM 的功能。
+
+This package implements a blind EEPROM accessor that communicates with the
+EtherCAT Slave Controller (ESC) through the Commander interface, using the
+standard EEPROM interface registers (Control/Status, Address, Data).
+
+本包实现了一个盲读 EEPROM 访问器，通过 Commander 接口与 EtherCAT 从站控制器（ESC）通信， 使用标准 EEPROM
+接口寄存器（控制/状态、地址、数据）。
+
+TYPES
+
+type EEPROM interface {
+	// ReadWord reads a 16-bit word from the EEPROM at the given address.
+	ReadWord(addr uint32) (uint16, error)
+	// WriteWord writes a 16-bit word to the EEPROM at the given address.
+	WriteWord(addr uint32, word uint16) error
+	// Close releases the EEPROM accessor.
+	Close() error
+}
+    EEPROM defines the interface for accessing an EtherCAT slave's EEPROM.
+
+func New(commander ecmd.Commander, addr ecfr.DatagramAddress) (EEPROM, error)
+    New creates a new EEPROM accessor for the slave at the given datagram
+    address.
+

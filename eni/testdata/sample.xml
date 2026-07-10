@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EtherCATInfo>
+  <Vendor>
+    <Id>42</Id>
+    <Name>TestVendor</Name>
+  </Vendor>
+  <Descriptions>
+    <Groups>
+      <Group>
+        <Type>Digital IO</Type>
+        <GroupName LcId="1">Digital Input</GroupName>
+        <GroupName LcId="2">Digital Output</GroupName>
+      </Group>
+    </Groups>
+    <Devices>
+      <Device>
+        <Type ProductCode="#x12345678" RevisionNo="#x00010000">TestDevice</Type>
+        <Name LcId="1">Device Name EN</Name>
+        <Sm MinSize="64" MaxSize="128" DefaultSize="64" StartAddress="#x1000" ControlByte="#x26">SM0</Sm>
+        <Sm MinSize="32" MaxSize="64" DefaultSize="32" StartAddress="#x1100" ControlByte="#x22">SM1</Sm>
+        <Eeprom ByteSize="2048" ConfigData="#x00010203040506070809"/>
+      </Device>
+    </Devices>
+  </Descriptions>
+</EtherCATInfo>

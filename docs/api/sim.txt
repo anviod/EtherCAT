@@ -1,0 +1,247 @@
+﻿package sim // import "github.com/anviod/EtherCAT/internal/sim"
+
+Package sim provides L2 EtherCAT slave and bus simulation for testing. 包 sim
+提供用于测试的 L2 EtherCAT 从站和总线模拟。
+
+This package implements a software EtherCAT slave with 64KB backing memory,
+register shadowing, EEPROM simulation, and frame processing capability. It is
+designed for unit testing and protocol validation without real hardware.
+
+本包实现了带 64KB 后备内存、寄存器影子、EEPROM 模拟和帧处理能力的 软件 EtherCAT 从站，用于在没有真实硬件的情况下进行单元测试和协议验证。
+
+# Key types
+
+  - L2Slave: software EtherCAT slave with register mapping
+  - L2Bus: bus with multiple slaves, implements ecmd.Framer
+  - L2EEPROM: EEPROM simulation for testing
+
+# Usage
+
+    bus := &sim.L2Bus{}
+    bus.Slaves = append(bus.Slaves, sim.NewL2Slave())
+    frame, _ := bus.New(64)
+    // ... fill datagrams ...
+    iframes, err := bus.Cycle()
+
+TYPES
+
+type ALControl struct {
+	// Has unexported fields.
+}
+    ALControl represents the AL Control register (0x0120-0x0121). Each field
+    maps to a specific bit in the register:
+
+        Byte 0: [idSel(7) | devIDReq(6) | errorInd(5) | ack(4) | state(3:0)]
+        Byte 1: [wdDiv2(7:5) | wdDiv(4:3) | wdTOut(2) | frcErr(1) | wdTrigger(0)]
+
+func (c *ALControl) Latch(shadow []byte, shadowWriteMask []bool)
+    Latch applies shadow register writes to the AL Control register. State
+    changes are gated: if the device is in error, state transitions that don't
+    clear the error are blocked.
+
+func (c *ALControl) Read(offs uint16, dp *uint8) bool
+    Read reads a byte from the AL Control register at the given offset. Offset
+    0 returns the state and control bits; offset 1 returns watchdog and divider
+    configuration.
+
+func (c *ALControl) WriteInteract(offs uint16) bool
+    WriteInteract returns whether the AL Control register is writable from the
+    ECAT side.
+
+type ALStatus struct {
+	// Has unexported fields.
+}
+    ALStatus represents the AL Status register (0x0130-0x0135). Each field maps
+    to a specific bit in the register:
+
+        Byte 0: state (3:0)
+        Byte 1: [reserved(7:2) | errInd(1) | stateChangeAck(0)]
+        Byte 2-3: devID (16-bit)
+        Byte 4: wdState (bit 0)
+        Byte 5: reserved
+
+func (s *ALStatus) Latch(shadow []byte, shadowWriteMask []bool)
+    Latch is a no-op: the AL Status register is read-only.
+
+func (s *ALStatus) Read(offs uint16, dp *uint8) bool
+    Read reads a byte from the AL Status register at the given offset.
+
+func (s *ALStatus) WriteInteract(offs uint16) bool
+    WriteInteract returns false: the AL Status register is read-only from the
+    ECAT side.
+
+type ALStatusControl struct {
+	// Has unexported fields.
+}
+    ALStatusControl holds shared state between the AL Control and AL Status
+    registers. It tracks the error condition and provides access to both
+    register views.
+
+func NewALStatusControl() *ALStatusControl
+    NewALStatusControl creates a new ALStatusControl with initialized control
+    and status register views.
+
+func (sc *ALStatusControl) ControlReg() *ALControl
+    ControlReg returns the AL Control register view.
+
+func (sc *ALStatusControl) InError() bool
+    InError returns true if the device is in an error state.
+
+func (sc *ALStatusControl) IsECATWritable() bool
+    IsECATWritable returns true, indicating the ECAT side can write to the AL
+    Control register.
+
+func (sc *ALStatusControl) SetError(seterr bool)
+    SetError sets or clears the error state.
+
+func (sc *ALStatusControl) StatusReg() *ALStatus
+    StatusReg returns the AL Status register view.
+
+type DevMapping struct {
+	StartAddr   uint16
+	LengthField uint16
+	DeviceField MMDevice
+}
+    DevMapping implements the MMapping interface, describing a contiguous region
+    of register space that is mapped to a specific MMDevice.
+
+func (d DevMapping) Device() MMDevice
+    Device returns the MMDevice that handles this mapped region.
+
+func (d DevMapping) Length() uint16
+    Length returns the length of the mapping in bytes.
+
+func (d DevMapping) Start() uint16
+    Start returns the starting address of the mapping.
+
+type FrameProcessor interface {
+	ProcessFrame(*ecfr.Frame) *ecfr.Frame
+}
+    FrameProcessor processes an EtherCAT frame, potentially modifying datagram
+    data and working counters. It returns the processed frame.
+
+type Framer interface {
+	New(maxdatalen int) (*ecfr.Frame, error)
+	Cycle() ([]*ecfr.Frame, error)
+	Close() error
+}
+    Framer is the local interface for frame-based EtherCAT communication.
+    It is defined here to avoid a circular dependency on the ecmd package.
+    L2Bus satisfies ecmd.Framer through structural typing.
+
+type L2Bus struct {
+	Slaves []FrameProcessor
+	// Has unexported fields.
+}
+    L2Bus represents a layer-2 EtherCAT bus with a collection of slaves. Frames
+    are created through New(), processed through all slaves during Cycle(),
+    and the bus is cleaned up with Close().
+
+func (b *L2Bus) Close() error
+    Close closes the bus and releases any resources. Currently a no-op.
+
+func (b *L2Bus) Cycle() (iframes []*ecfr.Frame, err error)
+    Cycle processes all queued frames through the slave chain: commit → copy →
+    overlay → process. 处理所有排队帧通过从站链：提交 → 复制 → 解析 → 处理。 Outgoing frame queue is
+    cleared after Cycle returns.
+
+func (b *L2Bus) New(maxdatalen int) (fr *ecfr.Frame, err error)
+    New creates a new EtherCAT frame with the specified max datagram data
+    length. 创建指定最大数据长度的 EtherCAT 帧。
+
+type L2EEPROM struct {
+	Array [8 * 1024]uint16
+
+	Addr        uint32
+	DataScratch [8]byte // data in wire encoding
+
+	PDIControl         bool
+	WriteEnable        bool
+	ChecksumError      bool
+	EENotLoaded        bool
+	MissingAcknowledge bool
+	ErrorWriteEnable   bool
+	Busy               bool
+}
+    L2EEPROM simulates an EtherCAT EEPROM with 8192 16-bit words. It provides
+    register-level access through the L2EEPROMRegisterSet.
+
+func NewL2EEPROM() *L2EEPROM
+    NewL2EEPROM creates a new L2EEPROM instance with pre-filled test data.
+    Each word is initialized to 0xEE00 + index.
+
+func (ee *L2EEPROM) Reg() *L2EEPROMRegisterSet
+    Reg returns the register set interface for accessing EEPROM registers in the
+    0x0500-0x050F address range.
+
+type L2EEPROMRegisterSet struct {
+	*L2EEPROM
+}
+    L2EEPROMRegisterSet implements MMDevice for the EEPROM register area
+    (addresses 0x0500-0x050F).
+
+func (ee *L2EEPROMRegisterSet) Latch(shadow []byte, shadowWriteMask []bool)
+    Latch applies shadow register writes to the EEPROM state.
+
+    FIXED: The address bytes (offsets 4-7) are now properly reconstructed
+    using correct uint32 type conversions. The original code had a bug where
+    uint32(shadow[7]) << 32 would overflow to 0 on a 32-bit type. The fix
+    uses uint32(shadow[7]) | uint32(shadow[6])<<8 | uint32(shadow[5])<<16 |
+    uint32(shadow[4])<<24 to construct the full 32-bit address with proper type
+    promotion before each shift.
+
+func (ee *L2EEPROMRegisterSet) Read(offs uint16, dp *uint8) bool
+    Read reads a byte from the EEPROM register area at the given offset.
+    The register layout is:
+
+        0x00: PDI Control (bit 0 = PDI access)
+        0x01: PDI Access State (reserved)
+        0x02: EEPROM Control/Status (bit 0 = write enable, bits 6-7 = address/size config)
+        0x03: EEPROM Command/Status (bits 0-1 = command, bits 3-7 = status flags)
+        0x04-0x07: EEPROM Address (32-bit, little-endian)
+        0x08-0x0F: EEPROM Data (64-bit scratch buffer)
+
+func (ee *L2EEPROMRegisterSet) WriteInteract(offs uint16) bool
+    WriteInteract handles write interaction for the EEPROM register area.
+    Register 0x02 (Control) and 0x03 (Command) are writeable only when not busy.
+
+type L2Slave struct {
+	BackingMemory [1 << 16]byte
+
+	ALStatusControl *ALStatusControl
+	EEPROM          *L2EEPROM
+	// Has unexported fields.
+}
+    L2Slave represents a layer-2 EtherCAT slave device with 64KB of backing
+    memory, register shadowing, and frame processing capability.
+
+func NewL2Slave() *L2Slave
+    NewL2Slave creates a new L2Slave with initialized ET1100 signature,
+    AL Status/Control registers, and EEPROM.
+
+func (s *L2Slave) ProcessFrame(infr *ecfr.Frame) (ofr *ecfr.Frame)
+    ProcessFrame processes an EtherCAT frame through this slave. 通过本从站处理
+    EtherCAT 帧。
+
+    For each datagram: if physically addressed, reads/writes backing
+    memory, updates WKC. Register shadow is latched after all datagrams.
+    对每个数据报：若物理寻址匹配，读写后备内存并更新 WKC。处理完成后锁存寄存器影子。
+
+    Perf: non-register addresses (>= 0x1000) use bulk copy() — 100x fewer calls.
+    性能优化：非寄存器地址使用批量 copy()，减少 100 倍函数调用。
+
+type MMDevice interface {
+	Read(offs uint16, dp *uint8) bool
+	WriteInteract(offs uint16) bool
+	Latch(shadow []byte, shadowWriteMask []bool)
+}
+    MMDevice represents a memory-mapped device that can be read from, written
+    to, and latched with shadow register values.
+
+type MMapping interface {
+	Start() uint16
+	Length() uint16
+	Device() MMDevice
+}
+    MMapping represents a mapping of a memory region to a device.
+

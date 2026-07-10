@@ -1,0 +1,22 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Go source files
+*.go text eol=lf
+
+# YAML / Markdown / HTML / JS
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.xml text eol=lf
+
+# Makefile needs tabs
+Makefile text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary

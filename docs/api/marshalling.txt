@@ -1,0 +1,69 @@
+﻿package marshalling // import "github.com/anviod/EtherCAT/internal/marshalling"
+
+Package marshalling provides little-endian and big-endian encoding/decoding
+functions for EtherCAT and Ethernet frame processing.
+
+包 marshalling 提供 EtherCAT 和以太网帧处理使用的小端序和大端序编解码函数。
+
+EtherCAT uses little-endian byte order for all datagram fields, while Ethernet
+uses big-endian (network byte order) for its header fields. This package
+centralizes both to avoid per-call imports of encoding/binary.
+
+EtherCAT 所有数据报字段使用小端序， 以太网头部字段使用大端序（网络字节序）。 本包集中管理两种编解码方式，避免每次调用
+encoding/binary。
+
+FUNCTIONS
+
+func GetUint16(b []byte) (uint16, []byte)
+    GetUint16 reads two bytes (little-endian) from b and returns the value
+    together with the remaining slice.
+
+func GetUint16BE(b []byte) (uint16, []byte)
+    GetUint16BE reads two bytes (big-endian) from b and returns the value
+    together with the remaining slice.
+
+func GetUint32(b []byte) (uint32, []byte)
+    GetUint32 reads four bytes (little-endian) from b and returns the value
+    together with the remaining slice.
+
+func GetUint32BE(b []byte) (uint32, []byte)
+    GetUint32BE reads four bytes (big-endian) from b and returns the value
+    together with the remaining slice.
+
+func GetUint8(b []byte) (uint8, []byte)
+    GetUint8 reads one byte from b and returns the value together with the
+    remaining slice.
+
+func GetUint8BE(b []byte) (uint8, []byte)
+    GetUint8BE reads one byte from b and returns the value together with the
+    remaining slice.
+
+func PutUint16(b []byte, v uint16) []byte
+    PutUint16 writes v (little-endian) into b and returns the remaining slice.
+
+func PutUint16BE(b []byte, v uint16) []byte
+    PutUint16BE writes v (big-endian) into b and returns the remaining slice.
+
+func PutUint32(b []byte, v uint32) []byte
+    PutUint32 writes v (little-endian) into b and returns the remaining slice.
+
+func PutUint32BE(b []byte, v uint32) []byte
+    PutUint32BE writes v (big-endian) into b and returns the remaining slice.
+
+func PutUint8(b []byte, v uint8) []byte
+    PutUint8 writes v into b and returns the remaining slice.
+
+func PutUint8BE(b []byte, v uint8) []byte
+    PutUint8BE writes v into b and returns the remaining slice.
+
+func XGetUint16(b []byte) uint16
+    XGetUint16 returns the first two bytes of b as a little-endian uint16
+    without advancing the slice.
+
+func XGetUint32(b []byte) uint32
+    XGetUint32 returns the first four bytes of b as a little-endian uint32
+    without advancing the slice.
+
+func XGetUint8(b []byte) uint8
+    XGetUint8 returns the first byte of b without advancing the slice.
+
