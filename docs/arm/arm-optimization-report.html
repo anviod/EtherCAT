@@ -145,7 +145,7 @@ p { margin: 0.75rem 0; }
 
 /* ── Metric cards ── */
 .metric-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem; margin: 1.5rem 0;
 }
 .metric-card {
@@ -277,6 +277,7 @@ sup a:hover { text-decoration: underline; }
     <nav class="site-nav">
       <a href="https://github.com/anviod/EtherCAT">Github</a>
       <a href="../index.html">主页</a>
+      <a href="../performance.html">性能报告</a>
       <a href="../api/index.html">API 文档</a>
       <a href="arm-optimization-report.html" class="active">ARM 优化报告</a>
     </nav>
@@ -308,17 +309,25 @@ sup a:hover { text-decoration: underline; }
 </p>
 
 <div class="metric-grid">
+  <div class="metric-card highlight">
+    <div class="value">~4 μs</div>
+    <div class="label">ARM64 最短周期 (SteadyCycle)</div>
+  </div>
+  <div class="metric-card highlight">
+    <div class="value">~0.1 μs</div>
+    <div class="label">ARM64 最短抖动 (stddev)</div>
+  </div>
   <div class="metric-card">
     <div class="value">~100 μs</div>
     <div class="label">典型 EtherCAT 周期</div>
   </div>
-  <div class="metric-card highlight">
+  <div class="metric-card">
     <div class="value">&lt; 0.02%</div>
     <div class="label">核心热路径占比</div>
   </div>
   <div class="metric-card">
-    <div class="value">~58 μs</div>
-    <div class="label">ARM64 总线循环 (L2Bus.Cycle)</div>
+    <div class="value">~70 μs</div>
+    <div class="label">ARM64 L2Bus.Cycle（含创建）</div>
   </div>
 </div>
 
@@ -510,13 +519,16 @@ ARM64 上分配开销远高于 x86，导致性能差距放大到 5-9 倍。</p>
   </thead>
   <tbody>
     <tr style="background:rgba(5,150,105,0.06);">
-      <td>典型 EtherCAT 周期</td><td>~100 μs</td><td>L2BusCycle 58.1 μs，FullPipeline 62.2 μs</td><td>✅ 达标</td>
+      <td>典型 EtherCAT 周期</td><td>~100 μs</td><td>SteadyCycle ~4 μs；L2BusCycle（含创建）~70 μs（2026-07-22）</td><td>✅ 达标</td>
     </tr>
     <tr style="background:rgba(5,150,105,0.06);">
-      <td>核心热路径占比</td><td>&lt; 0.5%</td><td>DatagramHeaderOverlay(7.75ns)+Commit(5.06ns) = 12.81ns，占 100μs 的 0.013%</td><td>✅ 远低于</td>
+      <td>最短周期 / 最短抖动</td><td>软件下限</td><td>min 3.70 μs / stddev 108 ns</td><td>✅ 达标</td>
     </tr>
     <tr style="background:rgba(5,150,105,0.06);">
-      <td>总线循环时间</td><td>~20 μs (x86)</td><td>x86 FullPipeline: 89.8 μs (含从站处理)，纯 Overlay+Commit: ~3.3 μs</td><td>✅ 达标</td>
+      <td>核心热路径占比</td><td>&lt; 0.5%</td><td>DatagramHeaderOverlay(7.75ns)+Commit(4.9ns) ≈ 12.7ns，占 100μs 的 0.013%</td><td>✅ 远低于</td>
+    </tr>
+    <tr style="background:rgba(5,150,105,0.06);">
+      <td>总线循环时间</td><td>~20 μs (x86 含创建)</td><td>ARM L2BusCycle ~70 μs；稳态 SteadyCycle ~4 μs</td><td>✅ 达标</td>
     </tr>
     <tr style="background:rgba(5,150,105,0.06);">
       <td>零分配热路径</td><td>所有核心路径</td><td>DatagramHeader Overlay/Commit、Datagram Overlay/Commit、ETHFrameWriteDown 均为 0 allocs</td><td>✅ 达标</td>

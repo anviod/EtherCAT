@@ -200,6 +200,7 @@ footer {
     <nav class="site-nav">
        <a href="https://github.com/anviod/EtherCAT">Github</a>
       <a href="../index.html">主页</a>
+      <a href="../performance.html">性能报告</a>
       <a href="index.html" class="active">API 文档</a>
       <a href="../arm/arm-optimization-report.html">ARM 优化报告</a>
     </nav>
@@ -266,15 +267,17 @@ footer {
 
 <h3>Microsecond-Level Performance <span class="lang-tag lang-zh">微秒级性能</span></h3>
 <p>
-  All encoding/decoding operations use <code>unsafe.Pointer</code> with single
-  <code>uint64</code>+<code>uint16</code> memory operations. DatagramHeader.Overlay: ~5ns, Commit: ~3.3ns.
-  Core hot path &lt; 0.5% of typical 100μs EtherCAT cycle time. L2Bus cycle ~20μs.<br>
-  所有编解码操作使用 <code>unsafe.Pointer</code> 单次 <code>uint64</code>+<code>uint16</code> 内存操作。数据报头 Overlay: ~5ns, Commit: ~3.3ns。
-  核心热路径在 100μs EtherCAT 典型周期中占比 &lt; 0.5%。L2Bus 总线循环 ~20μs。
+  Shortest software cycle <strong>~1 μs (x86) / ~4 μs (ARM64)</strong>; shortest jitter <strong>~0.1 μs</strong> (stddev).
+  DatagramHeader.Overlay ~3.0 ns, Commit ~2.1 ns (x86). Core hot path &lt; 0.5% of typical 100μs cycle.
+  L2Bus.Cycle (setup-inclusive) ~20 μs (x86) / ~70 μs (ARM).<br>
+  最短软件周期 <strong>~1 μs（x86）/ ~4 μs（ARM64）</strong>；最短抖动 <strong>~0.1 μs</strong>（标准差）。
+  数据报头 Overlay ~3.0 ns, Commit ~2.1 ns（x86）。核心热路径占 100μs 周期 &lt; 0.5%。
+  L2Bus.Cycle（含创建）~20 μs（x86）/ ~70 μs（ARM）。
+  <a href="../performance.html">→ 性能极限报告 / Performance report</a>
 </p>
 
 <div class="callout">
-  <strong>ARM64 优化</strong> — 通过 <code>FrameOverlayPool</code> 零分配策略，ARM64 帧解码加速 18.9 倍。
+  <strong>ARM64 优化</strong> — 通过 <code>FrameOverlayPool</code> 零分配策略，ARM64 帧解码加速约 16×（本次复测 FrameOverlay ~447 ns → OverlayReuse ~28 ns）。
   <a href="../arm/arm-optimization-report.html">→ 查看 ARM 优化专项报告</a>
 </div>
 

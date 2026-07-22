@@ -1,7 +1,10 @@
 package sim
 
 import (
+	"math"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/anviod/EtherCAT/ecad"
 	"github.com/anviod/EtherCAT/ecfr"
@@ -1208,6 +1211,144 @@ func TestL2SlaveNOPCommand(t *testing.T) {
 	if frame.Datagrams[0].WKC != 0 {
 		t.Errorf("NOP WKC = %d, want 0", frame.Datagrams[0].WKC)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Cycle / jitter measurement (最短周期 / 最短抖动)
+// ---------------------------------------------------------------------------
+
+// cycleStats holds min/mean/max/jitter statistics for a series of cycle timings.
+type cycleStats struct {
+	n          int
+	min        time.Duration
+	max        time.Duration
+	mean       time.Duration
+	p50        time.Duration
+	p99        time.Duration
+	stddev     time.Duration
+	peakToPeak time.Duration
+}
+
+func computeCycleStats(samples []time.Duration) cycleStats {
+	if len(samples) == 0 {
+		return cycleStats{}
+	}
+	sorted := append([]time.Duration(nil), samples...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+
+	var sum float64
+	min, max := sorted[0], sorted[len(sorted)-1]
+	for _, d := range sorted {
+		sum += float64(d)
+	}
+	mean := sum / float64(len(sorted))
+
+	var varSum float64
+	for _, d := range sorted {
+		diff := float64(d) - mean
+		varSum += diff * diff
+	}
+	stddev := math.Sqrt(varSum / float64(len(sorted)))
+
+	p50 := sorted[len(sorted)*50/100]
+	p99Idx := len(sorted) * 99 / 100
+	if p99Idx >= len(sorted) {
+		p99Idx = len(sorted) - 1
+	}
+
+	return cycleStats{
+		n:          len(samples),
+		min:        min,
+		max:        max,
+		mean:       time.Duration(mean),
+		p50:        p50,
+		p99:        sorted[p99Idx],
+		stddev:     time.Duration(stddev),
+		peakToPeak: max - min,
+	}
+}
+
+// steadyCycleBench is the shared body for BenchmarkL2BusSteadyCycle and
+// TestL2BusCycleJitter. Bus/slave are created once; each op is New→fill→Cycle.
+func steadyCycleBench(b *testing.B) {
+	bus := &L2Bus{}
+	slave := NewL2Slave()
+	slave.BackingMemory[0x1000] = 0x42
+	bus.Slaves = append(bus.Slaves, slave)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		frame, err := bus.New(256)
+		if err != nil {
+			b.Fatal(err)
+		}
+		dg, err := frame.NewDatagram(4)
+		if err != nil {
+			b.Fatal(err)
+		}
+		dg.Header.Command = ecfr.APRD
+		dg.Header.Addr32 = ecfr.PositionalAddr(0, 0x1000).Addr32()
+		dg.Header.SetLast(true)
+		if _, err := bus.Cycle(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// TestL2BusCycleJitter measures software bus cycle floor and run-to-run jitter
+// using testing.Benchmark (high-resolution), for documentation claims.
+//
+// 使用 testing.Benchmark 高精度测量软件总线循环下限与运行间抖动。
+func TestL2BusCycleJitter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping multi-run jitter measurement in short mode")
+	}
+	const runs = 12
+	samples := make([]time.Duration, 0, runs)
+	var totalAllocsPerOp int64
+	for i := 0; i < runs; i++ {
+		res := testing.Benchmark(steadyCycleBench)
+		if res.N == 0 {
+			t.Fatal("benchmark reported N=0")
+		}
+		ns := res.NsPerOp()
+		if ns <= 0 {
+			t.Fatalf("run %d: ns/op=%d", i, ns)
+		}
+		samples = append(samples, time.Duration(ns)*time.Nanosecond)
+		totalAllocsPerOp += res.AllocsPerOp()
+	}
+	st := computeCycleStats(samples)
+	avgAllocs := float64(totalAllocsPerOp) / float64(runs)
+
+	t.Logf("L2Bus steady software cycle (New+fill+Cycle), runs=%d (testing.Benchmark)", st.n)
+	t.Logf("  min (shortest cycle) = %v (%.2f μs)", st.min, float64(st.min.Nanoseconds())/1000)
+	t.Logf("  mean                 = %v (%.2f μs)", st.mean, float64(st.mean.Nanoseconds())/1000)
+	t.Logf("  p50                  = %v (%.2f μs)", st.p50, float64(st.p50.Nanoseconds())/1000)
+	t.Logf("  p99                  = %v (%.2f μs)", st.p99, float64(st.p99.Nanoseconds())/1000)
+	t.Logf("  max                  = %v (%.2f μs)", st.max, float64(st.max.Nanoseconds())/1000)
+	t.Logf("  stddev (jitter)      = %v (%.2f μs)", st.stddev, float64(st.stddev.Nanoseconds())/1000)
+	t.Logf("  peak-to-peak jitter  = %v (%.2f μs)", st.peakToPeak, float64(st.peakToPeak.Nanoseconds())/1000)
+	t.Logf("  avg allocs/op        = %.1f", avgAllocs)
+
+	if st.mean > 100*time.Microsecond {
+		t.Errorf("mean cycle %v exceeds 100μs typical period", st.mean)
+	}
+	if st.min <= 0 {
+		t.Errorf("min cycle must be positive, got %v", st.min)
+	}
+	// Shortest jitter (stddev across bench runs) should stay far below 100μs.
+	if st.stddev > 50*time.Microsecond {
+		t.Errorf("stddev jitter %v unexpectedly large (>50μs)", st.stddev)
+	}
+}
+
+// BenchmarkL2BusSteadyCycle measures New→fill→Cycle with a pre-created bus/slave
+// (steady-state software cycle floor used for "shortest cycle" claims).
+// 稳态软件循环下限基准（用于最短周期对外承诺）。
+func BenchmarkL2BusSteadyCycle(b *testing.B) {
+	steadyCycleBench(b)
 }
 
 // ---------------------------------------------------------------------------

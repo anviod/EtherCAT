@@ -9,9 +9,9 @@
 
 A pure Go implementation of the EtherCAT (Ethernet for Control Automation Technology) industrial Ethernet protocol. Provides a complete toolchain from ESI file parsing, frame encoding/decoding, command execution, to slave simulation — achieving **microsecond-level cycle time** suitable for industrial real-time applications.
 
-**Performance**: 100μs typical EtherCAT cycle | Core hot path &lt; 0.5% CPU | L2Bus cycle ~20μs | DatagramHeader Overlay ~5.0ns, Commit ~3.3ns
+**Performance**: Shortest cycle **~1 μs** (x86) / **~4 μs** (ARM64) | Shortest jitter **~0.1 μs** | Typical cycle ~100 μs | Hot path &lt; 0.5% | L2Bus cycle ~20 μs (x86, setup-inclusive)
 
-**[中文文档](README.zh-CN.md)** | **[API Docs](docs/api/)** | **[Refactoring Report](docs/)**
+**[中文文档](README.zh-CN.md)** | **[API Docs](docs/api/)** | **[Performance Report](docs/performance.html)** | **[Refactoring Report](docs/)**
 
 ## Architecture
 
@@ -149,16 +149,28 @@ make bench-stress
 
 All encoding/decoding hot paths are **zero-allocation** (0 B/op, 0 allocs/op). Combined optimizations — `unsafe.Pointer` single-cycle reads/writes, bulk `copy()` for register memory, `ByteLen` caching, and stack-allocated write buffers — enable **microsecond-level cycle times** suitable for industrial EtherCAT applications.
 
+### Committed Limits (benchmark-backed)
+
+| Metric | x86-64 (i5-13500H) | ARM64 (RK3588s) | Measurement |
+|--------|--------------------|-----------------|-------------|
+| **Shortest cycle** | **~1 μs** (min 0.76 μs) | **~4 μs** (min 3.70 μs) | `TestL2BusCycleJitter` / `BenchmarkL2BusSteadyCycle` |
+| **Shortest jitter** | **~0.1 μs** (stddev 66 ns) | **~0.1 μs** (stddev 108 ns) | run-to-run `ns/op` stddev |
+| Typical EtherCAT cycle | ~100 μs | ~100 μs | industrial planning target |
+| Hot path share of 100 μs | &lt; 0.5% | &lt; 0.5% | DatagramHeader Overlay+Commit |
+| L2Bus.Cycle (setup-inclusive) | ~20 μs | ~70 μs | `BenchmarkL2BusCycle` |
+
+Software floor is `New→fill→Cycle` with a pre-created bus/slave (no NIC / OS scheduling). See the [performance report](docs/performance.html) for full tables and methodology.
+
 ### Microsecond-Level Cycle Time Analysis
 
 EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-end processing pipeline performance:
 
 | Stage | Time | % of 100μs Cycle | Allocations |
 |-------|------|------------------|-------------|
-| Datagram header encode/decode | 3–5 ns | &lt; 0.01% | 0 B/op |
-| Frame overlay/commit | 78–430 ns | &lt; 0.5% | 104 B/op |
-| Slave processing (100B) | 332 ns | &lt; 0.4% | 0 B/op |
-| **Bus cycle (incl. copy)** | **~20 μs** | **~20%** | — |
+| Datagram header encode/decode | 2–5 ns | &lt; 0.01% | 0 B/op |
+| Frame overlay/commit | 60–770 ns | &lt; 0.8% | 104 B/op |
+| **Shortest steady bus cycle** | **~1 μs (x86) / ~4 μs (ARM)** | **~1–4%** | 10 allocs/op |
+| L2Bus.Cycle (setup-inclusive) | ~20 μs (x86) | ~20% | 21 allocs/op |
 | Command execution | 250–326 ns | &lt; 0.4% | 32–296 B/op |
 
 **Core hot path (encode/decode + frame ops + command execution) consumes &lt; 0.5% of a 100μs EtherCAT cycle.** The 10-byte datagram header — the highest-frequency operation in the system — uses only 2 memory operations (one `uint64` 8-byte + one `uint16` 2-byte) instead of 10 byte-by-byte accesses, achieving a 21% improvement on the Commit path.
@@ -167,8 +179,8 @@ EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-en
 
 | Benchmark | Time | Technique |
 |-----------|------|-----------|
-| `DatagramHeader.Overlay` | **~5.0 ns** | single `uint64` read (8 bytes) + `uint16` read (2 bytes) |
-| `DatagramHeader.Commit` | **~3.3 ns** | single `uint64` write + `uint16` write |
+| `DatagramHeader.Overlay` | **~3.0 ns** (x86) / ~7.8 ns (ARM) | single `uint64` read (8 bytes) + `uint16` read (2 bytes) |
+| `DatagramHeader.Commit` | **~2.1 ns** (x86) / ~4.9 ns (ARM) | single `uint64` write + `uint16` write |
 | `Datagram.Overlay` (32B) | ~5.0 ns | header overlay + WKC via `unsafe.Pointer` |
 | `Datagram.Overlay` (max 2047B) | ~5.0 ns | constant-time regardless of data length |
 | `Header.Overlay/Commit` | ~0.5 ns | single `uint16` read/write |
@@ -191,8 +203,9 @@ EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-en
 | `L2Slave.ProcessFrame` (100B) | ~332 ns | bulk `copy()` — 100B in 1 call vs 100 byte-by-byte |
 | `L2Slave.ProcessFrame` (1KB) | ~776 ns | bulk `copy()` — 1000B in 1 call |
 | `L2Slave.ProcessFrame` (register) | ~357 ns | per-byte dispatch through device mappings |
-| `L2Bus.Cycle` | **~20 μs** | commit→copy→overlay→process pipeline |
-| `L2Bus.FullPipeline` | ~31.5 μs | create→fill→cycle→verify |
+| `L2Bus.SteadyCycle` | **~1 μs** (x86) / **~4 μs** (ARM) | shortest software cycle (pre-created bus) |
+| `L2Bus.Cycle` | **~20 μs** (x86) / ~70 μs (ARM) | setup-inclusive commit→copy→overlay→process |
+| `L2Bus.FullPipeline` | ~66–75 μs (ARM) | create→fill→cycle→verify |
 
 ### Command Execution (ecmd)
 
@@ -215,7 +228,7 @@ EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-en
 
 ## Documentation
 
-See the [full refactoring report](https://anviod.github.io/EtherCAT) for architecture analysis, performance benchmarks, and code examples.
+See the [performance limits report](https://anviod.github.io/EtherCAT/performance.html) and [refactoring report](https://anviod.github.io/EtherCAT) for architecture analysis, shortest cycle/jitter numbers, and code examples.
 
 ## License
 

@@ -163,7 +163,7 @@ p { margin: 0.75rem 0; }
 }
 
 .perf-banner {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   gap: 1rem; margin: 1.5rem 0;
 }
 .perf-item {
@@ -256,7 +256,7 @@ sup a:hover { text-decoration: underline; }
   .hero-section { padding: 36px 0 32px; }
   .hero-section h1 { font-size: 1.5rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .perf-banner { grid-template-columns: 1fr; }
+  .perf-banner { grid-template-columns: 1fr 1fr; }
   .markdown-body { padding: 24px; border-radius: 4px; }
   body { font-size: 15px; }
 }
@@ -271,6 +271,7 @@ sup a:hover { text-decoration: underline; }
     <nav class="site-nav">
       <a href="https://github.com/anviod/EtherCAT">Github</a>
       <a href="index.html" class="active">主页</a>
+      <a href="performance.html">性能报告</a>
       <a href="api/index.html">API 文档</a>
       <a href="arm/arm-optimization-report.html">ARM 优化报告</a>
     </nav>
@@ -325,6 +326,14 @@ sup a:hover { text-decoration: underline; }
 
 <div class="perf-banner">
   <div class="perf-item">
+    <div class="perf-value">~1 μs</div>
+    <div class="perf-desc">最短周期 (x86) / ~4 μs (ARM)</div>
+  </div>
+  <div class="perf-item">
+    <div class="perf-value">~0.1 μs</div>
+    <div class="perf-desc">最短抖动 (stddev)</div>
+  </div>
+  <div class="perf-item">
     <div class="perf-value">100 μs</div>
     <div class="perf-desc">EtherCAT 典型循环周期</div>
   </div>
@@ -334,14 +343,15 @@ sup a:hover { text-decoration: underline; }
   </div>
   <div class="perf-item">
     <div class="perf-value">~20 μs</div>
-    <div class="perf-desc">L2Bus 总线循环耗时</div>
+    <div class="perf-desc">L2Bus 含创建开销 (x86)</div>
   </div>
 </div>
 
 <p>
   所有编解码热路径均实现 <mark class="key">零内存分配</mark>（0 B/op, 0 allocs/op）。
-  数据报头 Overlay 仅需 ~5.0 ns，Commit 仅需 ~3.3 ns，满足工业级 EtherCAT 微秒级循环时间要求。
-  核心热路径（数据报编解码 + 帧操作 + 命令执行）在 100μs 典型 EtherCAT 周期中占比远低于 0.5%。
+  软件稳态最短周期约 <mark class="key">1 μs（x86）/ 4 μs（ARM64）</mark>，最短抖动约 <mark class="key">0.1 μs</mark>（多次基准标准差）。
+  数据报头 Overlay ~3.0 ns，Commit ~2.1 ns；核心热路径在 100μs 典型周期中占比远低于 0.5%。
+  <a href="performance.html">→ 查看极限性能报告</a>
 </p>
 
 <div class="callout">
