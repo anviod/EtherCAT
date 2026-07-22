@@ -1,4 +1,4 @@
-# EtherCAT —  Protocol Library for Go
+# EtherCAT — Industrial Ethernet Protocol SDK for Go
 
 [![CI](https://github.com/anviod/EtherCAT/actions/workflows/ci.yml/badge.svg)](https://github.com/anviod/EtherCAT/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue)](https://go.dev/)
@@ -7,11 +7,33 @@
 [![Coverage](https://img.shields.io/badge/coverage-74%25--92%25-brightgreen)](.)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-2563eb)](https://anviod.github.io/EtherCAT)
 
-A pure Go implementation of the EtherCAT (Ethernet for Control Automation Technology) industrial Ethernet protocol. Provides a complete toolchain from ESI file parsing, frame encoding/decoding, command execution, to slave simulation — achieving **microsecond-level cycle time** suitable for industrial real-time applications.
+A **high-performance EtherCAT SDK** for industrial control, edge computing, and device manufacturers. Provides a complete toolchain from ESI parsing, master communication, and slave simulation to test validation. Pure Go — zero external runtime dependencies, deployable on x86-64 / ARM64 platforms.
 
-**Performance**: Shortest cycle **~1 μs** (x86) / **~4 μs** (ARM64) | Shortest jitter **~0.1 μs** | Typical cycle ~100 μs | Hot path &lt; 0.5% | L2Bus cycle ~20 μs (x86, setup-inclusive)
+**[中文文档](README.zh-CN.md)** | **[API Docs](docs/api/)** | **[Performance Report](docs/performance.html)** | **[Refactoring Report](docs/)** | **[Roadmap](ROADMAP.zh-CN.md)**
 
-**[中文文档](README.zh-CN.md)** | **[API Docs](docs/api/)** | **[Performance Report](docs/performance.html)** | **[Refactoring Report](docs/)**
+## Use Cases
+
+- **Industrial Gateways** — Parse EtherCAT frames at the edge, bridge to MQTT / OPC UA / HTTP
+- **EtherCAT Master** — Build a pure Go master runtime to drive servo drives, I/O, sensors
+- **Slave Simulation** — Simulate EtherCAT slave behavior in automated testing without real hardware
+- **Automated Testing** — Integrate slave simulation into CI for correctness and performance validation
+- **Protocol Analysis** — Parse, construct, and validate EtherCAT frames and datagrams for debugging
+- **CI Simulation** — Run protocol-level regression tests in GitHub Actions and other CI environments
+
+## Features
+
+- [x] **Pure Go** — zero CGo, zero kernel modules, cross-platform compilation and deployment
+- [x] **Zero-Allocation Hot Paths** — 0 B/op, 0 allocs/op on all encode/decode paths
+- [x] **225+ Test Cases** — 74%–92% coverage, including race detection and stress tests
+- [x] **ESI XML Parser** — complete EtherCAT Slave Information file parsing
+- [x] **Frame / Datagram Codec** — high-performance Frame, Datagram, and Ethernet frame handling
+- [x] **Command Execution Engine** — goroutine-safe multiplexed command scheduling
+- [x] **EEPROM Access** — ESC EEPROM read/write operations
+- [x] **L2 Slave / Bus Simulation** — protocol-level testing without real hardware
+- [x] **UDP Multicast Transport** — UDP-based EtherCAT transport layer
+- [x] **CLI Tool** — command-line parsing, scanning, read/write operations
+- [x] **GitHub Actions CI** — multi-version Go matrix test + benchmark + lint
+- [x] **Bilingual Documentation** — README + API docs + performance report + roadmap
 
 ## Architecture
 
@@ -27,6 +49,24 @@ ecmd (command execution, frame scheduling, concurrent multiplexing)
 │ (UDP)     │ (EEPROM) │  (slave sim)     │
 └──────────┴──────────┴──────────────────┘
 eni (ESI XML parser) — standalone
+```
+
+## Ecosystem Position
+
+```
+┌─────────────────────────────────────┐
+│        Industrial Application        │
+│    PLC Runtime / Motion / Safety    │
+├─────────────────────────────────────┤
+│         EtherCAT Master             │  ← Next milestone
+│   AL State Machine / DC / Mailbox   │
+├─────────────────────────────────────┤
+│      EtherCAT Protocol SDK          │  ← Current (v1.0.3)
+│   Frame / Command / ESI / EEPROM    │
+├─────────────────────────────────────┤
+│  Edge Gateway / Protocol Bridge /   │
+│         Simulation & Testing        │
+└─────────────────────────────────────┘
 ```
 
 ## Project Layout
@@ -70,7 +110,7 @@ eni (ESI XML parser) — standalone
 ### Installation
 
 ```bash
-go get github.com/anviod/EtherCAT@v2.1.1
+go get github.com/anviod/EtherCAT@v1.0.3
 ```
 
 ### Parse an ESI File
@@ -134,7 +174,7 @@ make bench
 make bench-stress
 ```
 
-## Bug Fixes (v2.0)
+## Bug Fixes (v1.0.1)
 
 | # | Package | Severity | Issue | Fix |
 |---|---------|----------|-------|-----|
@@ -147,7 +187,11 @@ make bench-stress
 
 ## Performance
 
-All encoding/decoding hot paths are **zero-allocation** (0 B/op, 0 allocs/op). Combined optimizations — `unsafe.Pointer` single-cycle reads/writes, bulk `copy()` for register memory, `ByteLen` caching, and stack-allocated write buffers — enable **microsecond-level cycle times** suitable for industrial EtherCAT applications.
+> **Note**: The numbers below represent software-internal processing performance (encode/decode, frame ops, command execution),
+> not end-to-end EtherCAT network real-time cycle time. Actual system cycle time also depends on NIC driver, IRQ latency,
+> DMA transfer, OS scheduling, and other factors. See the [performance report](docs/performance.html) for full methodology and data.
+
+**Test environment**: x86-64 on Intel i5-13500H + Go 1.23 + Windows 11; ARM64 on Rockchip RK3588s + Go 1.23 + Linux (ARMBIAN). All encoding/decoding hot paths are **zero-allocation** (0 B/op, 0 allocs/op).
 
 ### Committed Limits (benchmark-backed)
 
@@ -159,7 +203,7 @@ All encoding/decoding hot paths are **zero-allocation** (0 B/op, 0 allocs/op). C
 | Hot path share of 100 μs | &lt; 0.5% | &lt; 0.5% | DatagramHeader Overlay+Commit |
 | L2Bus.Cycle (setup-inclusive) | ~20 μs | ~70 μs | `BenchmarkL2BusCycle` |
 
-Software floor is `New→fill→Cycle` with a pre-created bus/slave (no NIC / OS scheduling). See the [performance report](docs/performance.html) for full tables and methodology.
+Software floor is `New→fill→Cycle` with a pre-created bus/slave (no NIC / OS scheduling).
 
 ### Microsecond-Level Cycle Time Analysis
 
@@ -216,7 +260,7 @@ EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-en
 | `CommandFramer.Cycle` | ~356 ns | 1 alloc / 32 B |
 | `BatchReadWrite` (3 cmds) | **~326 ns** | 1 alloc / 32 B |
 
-### Key Optimizations (v2.1)
+### Key Optimizations (v1.0.3)
 
 | # | Optimization | Impact |
 |---|-------------|--------|
@@ -226,9 +270,20 @@ EtherCAT typical cycle time requirements range from 100μs to 1ms. The end-to-en
 | 4 | Sentinel errors replace `fmt.Errorf` in hot paths | Zero allocation on error paths |
 | 5 | Stack-allocated write buffers (1/2/4 bytes) | Zero heap allocation for `ExecuteWrite8/16/32` |
 
+## Roadmap
+
+Currently positioned as a **Pure Go EtherCAT Protocol Library**, with the next milestone being an ETG-compliant industrial-grade EtherCAT Master. See the [roadmap](ROADMAP.zh-CN.md) for details.
+
+| Phase | Goal | Key Capabilities |
+|-------|------|-----------------|
+| v2.2 | Core Protocol Stack | AL State Machine + Network Scan + PDO Mapping + CoE |
+| v2.3 | Industrial Reliability | Watchdog + Error Recovery + Long-Run Stability Tests |
+| v2.4 | Advanced Features | DC + FoE + Diagnostics + Topology Visualization |
+| v3.0 | Validation & Compliance | Real Device Interop + Field Pilot |
+
 ## Documentation
 
-See the [performance limits report](https://anviod.github.io/EtherCAT/performance.html) and [refactoring report](https://anviod.github.io/EtherCAT) for architecture analysis, shortest cycle/jitter numbers, and code examples.
+See the [performance limits report](https://anviod.github.io/EtherCAT/performance.html) and [refactoring report](https://anviod.github.io/EtherCAT) for architecture analysis, shortest cycle/jitter numbers, and code examples. See the [roadmap](ROADMAP.zh-CN.md) for project planning.
 
 ## License
 

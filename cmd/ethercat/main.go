@@ -81,7 +81,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `EtherCAT CLI Tool — v2.1
+	fmt.Fprintf(os.Stderr, `EtherCAT CLI Tool — v1.0.3
 
 Usage:
   ethercat <command> [arguments]
